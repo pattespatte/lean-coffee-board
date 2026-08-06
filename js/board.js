@@ -215,6 +215,10 @@ function renderShell() {
     </header>
     <div id="timer-bar"></div>
     <main id="board" class="board"></main>
+    <footer class="site-footer">
+      No ads. No login. All free. Source code at
+      <a href="https://github.com/pattespatte/lean-coffee-board">GitHub</a>.
+    </footer>
   `;
 
   document.getElementById('board-title').addEventListener('input', (e) => {
