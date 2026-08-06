@@ -102,7 +102,7 @@ a:hover { text-decoration: underline; }
 .landing__hero p {
   color: var(--ink-soft);
   max-width: 36rem;
-  margin: 0 auto 2rem;
+  margin: 1.5rem auto;
   font-size: 1.05rem;
   line-height: 1.5;
 }
@@ -234,6 +234,7 @@ a:hover { text-decoration: underline; }
   gap: 1rem;
   padding: 1.25rem;
   align-items: start;
+  justify-content: center;
   overflow-x: auto;
 }
 .column {

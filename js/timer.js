@@ -10,6 +10,10 @@ let rafBoard = null;       // latest board snapshot (mutable ref)
 let container = null;
 let intervalId = null;
 let onChangeCallback = null;
+// Signature of the last full rebuild. The 500ms tick only needs to update the
+// time text and progress width; rebuilding innerHTML every tick blows away the
+// open <select> (and any focus) mid-interaction.
+let lastSignature = null;
 
 export function startTimerUI(board, el, onChange) {
   rafBoard = board;
@@ -24,6 +28,7 @@ export function stopTimerUI() {
   if (intervalId) { clearInterval(intervalId); intervalId = null; }
   container = null;
   rafBoard = null;
+  lastSignature = null;
 }
 
 export function setBoardRef(board) {
@@ -45,29 +50,44 @@ function render() {
 
   const mmss = remaining === null ? formatTime(duration) : formatTime(Math.max(0, remaining));
 
-  container.innerHTML = `
-    <div class="timer ${running ? '' : 'is-paused'}">
-      <span class="timer__label">Discussion</span>
-      <span class="timer__time ${low ? 'is-low' : ''}">${mmss}</span>
-      <div class="timer__progress"><span style="width:${pct}%"></span></div>
-      <div class="timer__buttons">
-        ${running
-          ? `<button class="btn btn--ghost btn--sm" data-timer="pause">⏸ Pause</button>`
-          : `<button class="btn btn--primary btn--sm" data-timer="start">▶ Start</button>`}
-        <button class="btn btn--ghost btn--sm" data-timer="reset">↺ Reset</button>
-        <label class="timer__duration">
-          length
-          <select data-timer-duration>
-            ${[120, 180, 300, 480, 600, 900].map((s) =>
-              `<option value="${s}" ${s === duration ? 'selected' : ''}>${formatTime(s)}</option>`
-            ).join('')}
-          </select>
-        </label>
+  // Only the time text + progress bar + low-time class change each tick.
+  // The buttons/select markup depends solely on `running` and `duration`,
+  // so we rebuild innerHTML only when one of those actually changes.
+  const signature = `${running}|${duration}`;
+  if (signature !== lastSignature) {
+    container.innerHTML = `
+      <div class="timer ${running ? '' : 'is-paused'}">
+        <span class="timer__label">Discussion</span>
+        <span class="timer__time" data-timer-time>${mmss}</span>
+        <div class="timer__progress"><span data-timer-bar style="width:${pct}%"></span></div>
+        <div class="timer__buttons">
+          ${running
+            ? `<button class="btn btn--ghost btn--sm" data-timer="pause">⏸ Pause</button>`
+            : `<button class="btn btn--primary btn--sm" data-timer="start">▶ Start</button>`}
+          <button class="btn btn--ghost btn--sm" data-timer="reset">↺ Reset</button>
+          <label class="timer__duration">
+            length
+            <select data-timer-duration>
+              ${[120, 180, 300, 480, 600, 900].map((s) =>
+                `<option value="${s}" ${s === duration ? 'selected' : ''}>${formatTime(s)}</option>`
+              ).join('')}
+            </select>
+          </label>
+        </div>
       </div>
-    </div>
-  `;
-
-  wireButtons();
+    `;
+    wireButtons();
+    lastSignature = signature;
+  } else {
+    // Patch only what actually changed this tick.
+    const timeEl = container.querySelector('[data-timer-time]');
+    const barEl = container.querySelector('[data-timer-bar]');
+    if (timeEl) {
+      timeEl.textContent = mmss;
+      timeEl.classList.toggle('is-low', low);
+    }
+    if (barEl) barEl.style.width = `${pct}%`;
+  }
 }
 
 function wireButtons() {
