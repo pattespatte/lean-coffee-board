@@ -2,12 +2,9 @@
 //
 // The anon key is DESIGNED to be public – access is governed by Row Level
 // Security policies, not by key secrecy. See supabase/schema.sql.
-//
-// Replace the placeholders below with the values from your Supabase project:
-//   Project Settings → API → Project URL  and  anon public key.
 
-export const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-export const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+export const SUPABASE_URL = 'https://dwssjyjnafimhjtcqnjz.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_publishable_Javq2_yN6vAmuJ2cyCk2DQ_UgEH3h89';
 
 // 8-char slugs give ~4 billion combinations. Good enough for a no-account
 // capability URL. Increase for more entropy.
