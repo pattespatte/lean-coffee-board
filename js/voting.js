@@ -58,7 +58,7 @@ export async function toggleVote(slug, cardId, cards, setCardVotes) {
  */
 export async function sortToDiscussByVotes(supabase, board, cards, onDone) {
   const toDiscuss = cards
-    .filter((c) => c.column === 'to_discuss')
+    .filter((c) => c.column_key === 'to_discuss')
     .sort((a, b) => (b.votes || 0) - (a.votes || 0) || a.position - b.position);
 
   // Assign fresh positions: big gaps, top of column = highest votes.

@@ -85,7 +85,7 @@ function handleRealtime(payload) {
 
 function insertSorted() {
   cards.sort((a, b) =>
-    a.column.localeCompare(b.column) || a.position - b.position);
+    a.column_key.localeCompare(b.column_key) || a.position - b.position);
 }
 
 // ── Mutations ───────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ export async function addCard(columnKey) {
   // Optimistic insert.
   const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const optimistic = {
-    id: tempId, board_id: board.id, column: columnKey, content,
+    id: tempId, board_id: board.id, column_key: columnKey, content,
     author_name: identity.name, author_color: identity.color,
     position, votes: 0, created_at: new Date().toISOString(), _pending: true,
   };
@@ -111,7 +111,7 @@ export async function addCard(columnKey) {
   renderBoard();
 
   const { data, error } = await supabase.from('cards').insert({
-    board_id: board.id, column: columnKey, content,
+    board_id: board.id, column_key: columnKey, content,
     author_name: identity.name, author_color: identity.color, position,
   }).select().single();
   if (error) {
@@ -147,18 +147,18 @@ export async function moveCard(id, toColumn, toPosition) {
   const i = cards.findIndex((c) => c.id === id);
   if (i < 0) return;
   const card = cards[i];
-  const prev = { column: card.column, position: card.position };
+  const prev = { column_key: card.column_key, position: card.position };
 
   // Optimistic move.
-  card.column = toColumn;
+  card.column_key = toColumn;
   card.position = toPosition;
   insertSorted();
   renderBoard();
 
   const { error } = await supabase.from('cards')
-    .update({ column: toColumn, position: toPosition }).eq('id', id);
+    .update({ column_key: toColumn, position: toPosition }).eq('id', id);
   if (error) {
-    card.column = prev.column;
+    card.column_key = prev.column_key;
     card.position = prev.position;
     insertSorted();
     renderBoard();
@@ -184,7 +184,7 @@ export async function setCardVotes(id, votes) {
 }
 
 export function nextPosition(columnKey) {
-  const inCol = cards.filter((c) => c.column === columnKey);
+  const inCol = cards.filter((c) => c.column_key === columnKey);
   if (inCol.length === 0) return 1000;
   return Math.max(...inCol.map((c) => c.position)) + 1000;
 }
@@ -237,7 +237,7 @@ function renderBoard() {
   if (!root) return;
 
   const html = COLUMNS.map((col) => {
-    const colCards = cards.filter((c) => c.column === col.key);
+    const colCards = cards.filter((c) => c.column_key === col.key);
     const cardsHtml = colCards.map((card) => renderCard(card, col.key)).join('');
     return `
       <section class="column" data-column="${col.key}">
@@ -274,7 +274,7 @@ function renderCard(card, columnKey) {
   const pending = card._pending ? ' card--pending' : '';
   return `
     <article class="card${pending}" draggable="true"
-             data-card-id="${card.id}" data-column="${card.column}"
+             data-card-id="${card.id}" data-column="${card.column_key}"
              data-position="${card.position}">
       <div class="card__author">
         <span class="card__dot" style="background:${card.author_color || '#999'}"></span>

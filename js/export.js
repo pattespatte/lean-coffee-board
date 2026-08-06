@@ -18,7 +18,7 @@ export function exportJson(board, cards) {
     cards: cards
       .filter((c) => !c._pending)
       .map((c) => ({
-        column: c.column,
+        column_key: c.column_key,
         content: c.content,
         author_name: c.author_name,
         author_color: c.author_color,
@@ -40,7 +40,7 @@ export function exportJson(board, cards) {
 
 export function printBoard(board, cards) {
   const byColumn = (col) => cards
-    .filter((c) => c.column === col && !c._pending)
+    .filter((c) => c.column_key === col && !c._pending)
     .sort((a, b) => (b.votes || 0) - (a.votes || 0) || a.position - b.position);
 
   const title = escapeHtml(board.title || 'Lean Coffee meeting');

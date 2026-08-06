@@ -22,8 +22,8 @@ create index if not exists idx_boards_slug on public.boards (slug);
 create table if not exists public.cards (
   id           uuid primary key default gen_random_uuid(),
   board_id     uuid not null references public.boards (id) on delete cascade,
-  column       text not null default 'to_discuss'
-                 check (column in ('to_discuss', 'discussing', 'discussed', 'actions')),
+  column_key   text not null default 'to_discuss'
+                 check (column_key in ('to_discuss', 'discussing', 'discussed', 'actions')),
   content      text not null default '',
   author_name  text,
   author_color text,
@@ -33,7 +33,7 @@ create table if not exists public.cards (
 );
 
 create index if not exists idx_cards_board_id        on public.cards (board_id);
-create index if not exists idx_cards_board_col_pos    on public.cards (board_id, column, position);
+create index if not exists idx_cards_board_col_pos    on public.cards (board_id, column_key, position);
 
 -- ── Row Level Security ──────────────────────────────────────────────────
 -- No-account model: the 8-char board slug is the capability secret.
