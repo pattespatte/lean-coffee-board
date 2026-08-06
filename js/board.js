@@ -286,8 +286,9 @@ function renderCard(card, columnKey) {
           <button class="btn btn--vote ${voted ? 'is-voted' : ''}"
                   data-vote="${card.id}"
                   title="Vote for this topic">
-            ▲ <span class="card__votes">${card.votes || 0}</span>
-          </button>` : `<span class="card__votes-static">${card.votes || 0} ▲</span>`}
+            <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"/><path d="m4 18v-9"/></svg>
+            <span class="card__votes">${card.votes || 0}</span>
+          </button>` : `<span class="card__votes-static">${card.votes || 0} <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"/><path d="m4 18v-9"/></svg></span>`}
         <div class="card__actions">
           <button class="btn btn--icon" data-edit="${card.id}" title="Edit">✎</button>
           <button class="btn btn--icon" data-delete="${card.id}" title="Delete">🗑</button>

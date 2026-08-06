@@ -367,9 +367,13 @@ a:hover { text-decoration: underline; }
   margin-top: .5rem;
   gap: .4rem;
 }
-.card__votes-static { font-size: .75rem; color: var(--ink-faint); }
+.card__votes-static { font-size: .75rem; color: var(--ink-faint); display: inline-flex; align-items: center; gap: .2rem; }
 .card__votes { font-variant-numeric: tabular-nums; }
 .card__actions { display: flex; gap: .15rem; margin-left: auto; }
+
+/* Vote icon: inherits color via currentColor, sizes to the surrounding text. */
+.icon--thumb { width: 2em; height: 2em; vertical-align: -0.125em; }
+.btn--vote { display: inline-flex; align-items: center; gap: .25rem; }
 
 /* ── Flash error ──────────────────────────────────────────────────── */
 .flash-error {
