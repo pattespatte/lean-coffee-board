@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lean Coffee Board – demo screenshot</title>
+  <!-- The real app's stylesheet, so the screenshot is pixel-identical. -->
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    /* Screenshot-only: fix the viewport so the 4-column board sits flat
+       without horizontal scroll, and disable the sticky topbar. */
+    html, body { background: var(--bg); }
+    .topbar { position: static; }
+    .board { overflow: visible; }
+  </style>
+</head>
+<body>
+  <!-- Mirrors board.js renderShell() -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="#/" class="topbar__logo">☕</a>
+      <input id="board-title" class="topbar__title" type="text"
+             value="Sprint 24 retrospective">
+      <span class="topbar__slug">#/k7m2xq9p</span>
+    </div>
+    <div class="topbar__right">
+      <span class="identity-badge" id="identity-badge"
+            title="You are Curious Otter · 1 vote left">
+        <span class="identity-badge__dot" style="background:hsl(28, 65%, 55%)"></span>
+        <span>Curious Otter</span>
+      </span>
+      <button id="export-json-btn" class="btn btn--ghost" title="Download board as JSON">⬇ JSON</button>
+      <button id="export-print-btn" class="btn btn--ghost" title="Print or save as PDF">🖨 Print</button>
+    </div>
+  </header>
+
+  <!-- Mirrors timer.js render(): running, 5:00 length, ~3:42 remaining, not low yet. -->
+  <div id="timer-bar">
+    <div class="timer">
+      <span class="timer__label">Discussion</span>
+      <span class="timer__time">3:42</span>
+      <div class="timer__progress"><span style="width:74%"></span></div>
+      <div class="timer__buttons">
+        <button class="btn btn--ghost btn--sm" data-timer="pause">⏸ Pause</button>
+        <button class="btn btn--ghost btn--sm" data-timer="reset">↺ Reset</button>
+        <label class="timer__duration">
+          length
+          <select data-timer-duration>
+            <option value="120">2:00</option>
+            <option value="180">3:00</option>
+            <option value="300" selected>5:00</option>
+            <option value="480">8:00</option>
+            <option value="600">10:00</option>
+            <option value="900">15:00</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mirrors board.js renderBoard(): four columns with cards in a realistic
+       mid-retro state. Authors use the same dot/name markup as renderCard(). -->
+  <main id="board" class="board">
+
+    <section class="column" data-column="to_discuss">
+      <header class="column__head">
+        <h2>To Discuss</h2>
+        <span class="column__count">4</span>
+        <button class="btn btn--ghost btn--sm" data-sort-votes>Sort by votes</button>
+      </header>
+      <div class="column__cards" data-dropzone="to_discuss">
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(160, 65%, 55%)"></span>
+            <span class="card__author-name">Steady Fox</span>
+          </div>
+          <div class="card__content">PR review queue is growing – reviews wait 2+ days</div>
+          <div class="card__footer">
+            <button class="btn btn--vote is-voted" title="Vote for this topic">▲ <span class="card__votes">5</span></button>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(210, 65%, 55%)"></span>
+            <span class="card__author-name">Clever Heron</span>
+          </div>
+          <div class="card__content">Onboarding docs feel out of date – new hires get stuck on auth setup</div>
+          <div class="card__footer">
+            <button class="btn btn--vote is-voted" title="Vote for this topic">▲ <span class="card__votes">4</span></button>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(95, 65%, 55%)"></span>
+            <span class="card__author-name">Bright Panda</span>
+          </div>
+          <div class="card__content">Staging environment keeps drifting from production schema</div>
+          <div class="card__footer">
+            <button class="btn btn--vote" title="Vote for this topic">▲ <span class="card__votes">2</span></button>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(28, 65%, 55%)"></span>
+            <span class="card__author-name">Curious Otter</span>
+          </div>
+          <div class="card__content">Demo slot in standup ran long again – ate 15 min</div>
+          <div class="card__footer">
+            <button class="btn btn--vote" title="Vote for this topic">▲ <span class="card__votes">1</span></button>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+      <form class="column__add" data-add-form="to_discuss" onsubmit="return false">
+        <textarea data-add-input="to_discuss" placeholder="Add a topic…" rows="1"></textarea>
+        <button type="submit" class="btn btn--ghost btn--sm">Add</button>
+      </form>
+    </section>
+
+    <section class="column" data-column="discussing">
+      <header class="column__head">
+        <h2>Discussing</h2>
+        <span class="column__count">1</span>
+      </header>
+      <div class="column__cards" data-dropzone="discussing">
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(340, 65%, 55%)"></span>
+            <span class="card__author-name">Thoughtful Lynx</span>
+          </div>
+          <div class="card__content">CI pipeline flaky on the macOS runners – about 1 in 4 builds fails for no reason and people re-run manually</div>
+          <div class="card__footer">
+            <span class="card__votes-static">3 ▲</span>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+      <form class="column__add" data-add-form="discussing" onsubmit="return false">
+        <textarea data-add-input="discussing" placeholder="Add a topic…" rows="1"></textarea>
+        <button type="submit" class="btn btn--ghost btn--sm">Add</button>
+      </form>
+    </section>
+
+    <section class="column" data-column="discussed">
+      <header class="column__head">
+        <h2>Discussed</h2>
+        <span class="column__count">2</span>
+      </header>
+      <div class="column__cards" data-dropzone="discussed">
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(210, 65%, 55%)"></span>
+            <span class="card__author-name">Clever Heron</span>
+          </div>
+          <div class="card__content">Story points keep drifting from actual effort – estimation meetings feel rushed</div>
+          <div class="card__footer">
+            <span class="card__votes-static">6 ▲</span>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(160, 65%, 55%)"></span>
+            <span class="card__author-name">Steady Fox</span>
+          </div>
+          <div class="card__content">Slack notifications too noisy – hard to tell what actually needs attention</div>
+          <div class="card__footer">
+            <span class="card__votes-static">4 ▲</span>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+      <form class="column__add" data-add-form="discussed" onsubmit="return false">
+        <textarea data-add-input="discussed" placeholder="Add a topic…" rows="1"></textarea>
+        <button type="submit" class="btn btn--ghost btn--sm">Add</button>
+      </form>
+    </section>
+
+    <section class="column" data-column="actions">
+      <header class="column__head">
+        <h2>Actions</h2>
+        <span class="column__count">2</span>
+      </header>
+      <div class="column__cards" data-dropzone="actions">
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(95, 65%, 55%)"></span>
+            <span class="card__author-name">Bright Panda</span>
+          </div>
+          <div class="card__content">Trim default notification scope to @here only – owners opt in to @channel</div>
+          <div class="card__footer">
+            <span class="card__votes-static">4 ▲</span>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" draggable="true">
+          <div class="card__author">
+            <span class="card__dot" style="background:hsl(28, 65%, 55%)"></span>
+            <span class="card__author-name">Curious Otter</span>
+          </div>
+          <div class="card__content">Owner: Maya – draft a 3-step auth setup guide by next sprint</div>
+          <div class="card__footer">
+            <span class="card__votes-static">1 ▲</span>
+            <div class="card__actions">
+              <button class="btn btn--icon" title="Edit">✎</button>
+              <button class="btn btn--icon" title="Delete">🗑</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+      <form class="column__add" data-add-form="actions" onsubmit="return false">
+        <textarea data-add-input="actions" placeholder="Add a topic…" rows="1"></textarea>
+        <button type="submit" class="btn btn--ghost btn--sm">Add</button>
+      </form>
+    </section>
+
+  </main>
+</body>
+</html>

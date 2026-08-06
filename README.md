@@ -55,19 +55,14 @@ export const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 
 ### 3. Push to GitHub and enable Pages
 
-1. Push the repo to `https://github.com/pattespatte/lean-coffee-board`.
+1. Push the repo to your own GitHub, e.g. `https://github.com/<your-user>/lean-coffee-board`.
 2. In the repo: **Settings → Pages → Source = "Deploy from a branch"**, branch `main`, folder `(root)`. Save.
-3. Your board will be live at `https://pattespatte.github.io/lean-coffee-board/`. Each push to `main` auto-deploys.
+3. Your board will be live at `https://<your-user>.github.io/lean-coffee-board/`. Each push to `main` auto-deploys. The app uses hash-based routing and relative asset paths, so it also deploys unchanged under any static host or custom domain – no site-specific config needed.
 
-### 4. Install locally on other machines
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/pattespatte/lean-coffee-board/main/install.sh | bash
-```
-
-This clones the repo to `~/repo/lean-coffee-board`. To run it locally:
+### 4. Run locally
 
 ```bash
+git clone https://github.com/<your-user>/lean-coffee-board.git ~/repo/lean-coffee-board
 cd ~/repo/lean-coffee-board
 python3 -m http.server 8000
 # open http://localhost:8000
@@ -105,9 +100,8 @@ lean-coffee-board/
 │   ├── identity.js             # Random name/colour, per browser
 │   └── export.js               # JSON + print export
 ├── supabase/schema.sql         # Tables, RLS, realtime (run once)
-├── install.sh                  # Clone to ~/repo/lean-coffee-board
 ├── .nojekyll                   # Disable Jekyll processing on Pages
-└── examples/                   # Reference images
+└── examples/                   # Sample board screenshot + demo HTML source
 ```
 
 ---
