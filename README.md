@@ -4,7 +4,7 @@ A simple, real-time collaborative board for **Lean Coffee** style meetings – a
 
 Four-column Kanban: **To Discuss → Discussing → Discussed → Actions**. Drag cards horizontally between columns and vertically to reorder. Share a link, no accounts required.
 
-![agile-coffee](./examples/agile-coffee.jpeg)
+![Agile Coffee Board](./examples/agile-coffee.webp)
 
 ---
 

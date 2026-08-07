@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,23 +10,31 @@
   <style>
     /* Screenshot-only: fix the viewport so the 4-column board sits flat
        without horizontal scroll, and disable the sticky topbar. */
-    html, body { background: var(--bg); }
-    .topbar { position: static; }
-    .board { overflow: visible; }
+    html,
+    body {
+      background: var(--bg);
+    }
+
+    .topbar {
+      position: static;
+    }
+
+    .board {
+      overflow: visible;
+    }
   </style>
 </head>
+
 <body>
   <!-- Mirrors board.js renderShell() -->
   <header class="topbar">
     <div class="topbar__left">
       <a href="#/" class="topbar__logo">☕</a>
-      <input id="board-title" class="topbar__title" type="text"
-             value="Sprint 24 retrospective">
+      <input id="board-title" class="topbar__title" type="text" value="Sprint 24 retrospective">
       <span class="topbar__slug">#/k7m2xq9p</span>
     </div>
     <div class="topbar__right">
-      <span class="identity-badge" id="identity-badge"
-            title="You are Curious Otter · 1 vote left">
+      <span class="identity-badge" id="identity-badge" title="You are Curious Otter · 1 vote left">
         <span class="identity-badge__dot" style="background:hsl(28, 65%, 55%)"></span>
         <span>Curious Otter</span>
       </span>
@@ -77,7 +86,10 @@
           </div>
           <div class="card__content">PR review queue is growing – reviews wait 2+ days</div>
           <div class="card__footer">
-            <button class="btn btn--vote is-voted" title="Vote for this topic">▲ <span class="card__votes">5</span></button>
+            <button class="btn btn--vote is-voted" title="Vote for this topic"><svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg> <span class="card__votes">5</span></button>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -92,7 +104,10 @@
           </div>
           <div class="card__content">Onboarding docs feel out of date – new hires get stuck on auth setup</div>
           <div class="card__footer">
-            <button class="btn btn--vote is-voted" title="Vote for this topic">▲ <span class="card__votes">4</span></button>
+            <button class="btn btn--vote is-voted" title="Vote for this topic"><svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg> <span class="card__votes">4</span></button>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -107,7 +122,10 @@
           </div>
           <div class="card__content">Staging environment keeps drifting from production schema</div>
           <div class="card__footer">
-            <button class="btn btn--vote" title="Vote for this topic">▲ <span class="card__votes">2</span></button>
+            <button class="btn btn--vote" title="Vote for this topic"><svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg> <span class="card__votes">2</span></button>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -122,7 +140,10 @@
           </div>
           <div class="card__content">Demo slot in standup ran long again – ate 15 min</div>
           <div class="card__footer">
-            <button class="btn btn--vote" title="Vote for this topic">▲ <span class="card__votes">1</span></button>
+            <button class="btn btn--vote" title="Vote for this topic"><svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg> <span class="card__votes">1</span></button>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -151,7 +172,10 @@
           </div>
           <div class="card__content">CI pipeline flaky on the macOS runners – about 1 in 4 builds fails for no reason and people re-run manually</div>
           <div class="card__footer">
-            <span class="card__votes-static">3 ▲</span>
+            <span class="card__votes-static">3 <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg></span>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -180,7 +204,10 @@
           </div>
           <div class="card__content">Story points keep drifting from actual effort – estimation meetings feel rushed</div>
           <div class="card__footer">
-            <span class="card__votes-static">6 ▲</span>
+            <span class="card__votes-static">6 <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg></span>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -195,7 +222,10 @@
           </div>
           <div class="card__content">Slack notifications too noisy – hard to tell what actually needs attention</div>
           <div class="card__footer">
-            <span class="card__votes-static">4 ▲</span>
+            <span class="card__votes-static">4 <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg></span>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -224,7 +254,10 @@
           </div>
           <div class="card__content">Trim default notification scope to @here only – owners opt in to @channel</div>
           <div class="card__footer">
-            <span class="card__votes-static">4 ▲</span>
+            <span class="card__votes-static">4 <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg></span>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -239,7 +272,10 @@
           </div>
           <div class="card__content">Owner: Maya – draft a 3-step auth setup guide by next sprint</div>
           <div class="card__footer">
-            <span class="card__votes-static">1 ▲</span>
+            <span class="card__votes-static">1 <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path>
+                <path d="m4 18v-9"></path>
+              </svg></span>
             <div class="card__actions">
               <button class="btn btn--icon" title="Edit">✎</button>
               <button class="btn btn--icon" title="Delete">🗑</button>
@@ -255,5 +291,10 @@
     </section>
 
   </main>
+  <footer class="site-footer">
+    No ads. No login. All free. Source code at
+    <a href="https://github.com/pattespatte/lean-coffee-board">GitHub</a>.
+  </footer>
 </body>
+
 </html>
