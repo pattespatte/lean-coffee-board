@@ -1,0 +1,58 @@
+# Prevents the Supabase free-tier project from being paused after 1 week
+# of API inactivity. Runs every 5 days at 04:00 UTC, well inside the 7-day
+# window, and can be triggered manually from the Actions tab.
+#
+# Why this hits the API and not the Pages site: the pause timer counts API
+# requests at the Supabase project, not visits to the static frontend. A
+# read-only query against the boards table is the cheapest way to register
+# activity without mutating any data.
+#
+# The anon key is intentionally committed – access is governed by RLS, not
+# key secrecy. See js/config.js and supabase/schema.sql.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # Every 5 days at 04:00 UTC. GitHub's cron is approximate for scheduled
+    # workflows on free runners; the 2-day margin absorbs any drift.
+    - cron: '0 4 */5 * *'
+  workflow_dispatch: {} # manual "Run workflow" button in the Actions tab
+
+# Avoid overlapping runs if GitHub delays a scheduled fire.
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          # Mirrors js/config.js. Update both if the project moves.
+          SUPABASE_URL: https://dwssjyjnafimhjtcqnjz.supabase.co
+          SUPABASE_ANON_KEY: sb_publishable_Javq2_yN6vAmuJ2cyCk2DQ_UgEH3h89
+        run: |
+          set -euo pipefail
+
+          # Cheap read-only query: select one id from boards. This is enough
+          # to register API activity and reset the 1-week inactivity timer.
+          http=$(curl -sS -o /tmp/body -w '%{http_code}' \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            --max-time 30 \
+            "${SUPABASE_URL}/rest/v1/boards?select=id&limit=1")
+
+          echo "HTTP ${http}"
+          cat /tmp/body; echo
+
+          # 200 = OK, 429 = rate-limited (still counts as activity). Anything
+          # else is a real problem – fail loudly so the run is visible as red.
+          if [ "$http" != "200" ] && [ "$http" != "429" ]; then
+            echo "::error::Supabase ping failed with HTTP ${http}"
+            exit 1
+          fi
+
+          echo "Supabase activity registered."

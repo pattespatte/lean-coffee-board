@@ -35,6 +35,7 @@ Browser (GitHub Pages)              Supabase (free tier)
 - The frontend is hosted on **GitHub Pages** and uses **hash-based routing**, so no SPA redirect tricks are needed.
 - **Supabase** provides the Postgres database, Row Level Security, and Realtime channels. The frontend talks to it directly via `supabase-js`.
 - The Supabase **anon key** is intentionally public (committed to the repo) – access is governed by RLS, not key secrecy. The board slug acts as a capability URL: anyone with the link can edit.
+- **Keep-alive:** on the free tier, Supabase pauses projects after **1 week of API inactivity**. The [`.github/workflows/keep-alive.yml`](.github/workflows/keep-alive.yml) workflow pings the REST API every 5 days (and on manual dispatch) so the project never pauses. It does a read-only `boards` query and never mutates data. If you fork, update the `SUPABASE_URL` and `SUPABASE_ANON_KEY` in the workflow to match your own project (they're committed on purpose – the anon key is safe to expose).
 
 ---
 
