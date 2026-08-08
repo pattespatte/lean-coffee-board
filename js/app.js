@@ -79,11 +79,14 @@ function renderLanding() {
           <code>#/<span class="muted">a1b2c3d4</span></code>
         </p>
       </section>
-      <section class="landing__columns">
-        <div class="landing__col"><h3>To Discuss</h3><p>Everyone adds topics.</p></div>
-        <div class="landing__col"><h3>Discussing</h3><p>The current topic, time-boxed.</p></div>
-        <div class="landing__col"><h3>Discussed</h3><p>Topics we've covered.</p></div>
-        <div class="landing__col"><h3>Actions</h3><p>Decisions and next steps.</p></div>
+      <section class="landing__how" aria-labelledby="how-it-works">
+        <h2 id="how-it-works" class="landing__how-title">How it works</h2>
+        <ul class="landing__columns">
+          <li class="landing__col"><h3>To Discuss</h3><p>Everyone adds topics.</p></li>
+          <li class="landing__col"><h3>Discussing</h3><p>The current topic, time-boxed.</p></li>
+          <li class="landing__col"><h3>Discussed</h3><p>Topics we've covered.</p></li>
+          <li class="landing__col"><h3>Actions</h3><p>Decisions and next steps.</p></li>
+        </ul>
       </section>
     </main>
     <footer class="site-footer">

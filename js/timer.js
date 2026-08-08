@@ -56,25 +56,25 @@ function render() {
   const signature = `${running}|${duration}`;
   if (signature !== lastSignature) {
     container.innerHTML = `
-      <div class="timer ${running ? '' : 'is-paused'}">
+      <section class="timer ${running ? '' : 'is-paused'}" aria-label="Discussion timer">
         <span class="timer__label">Discussion</span>
-        <span class="timer__time" data-timer-time>${mmss}</span>
-        <div class="timer__progress"><span data-timer-bar style="width:${pct}%"></span></div>
+        <span class="timer__time" data-timer-time>${mmss}<span class="visually-hidden" data-timer-aria> ${ariaTimeLabel(remaining, duration)}</span></span>
+        <div class="timer__progress" role="progressbar" aria-valuemin="0" aria-valuemax="${duration}" aria-valuenow="${remaining === null ? duration : Math.max(0, Math.round(remaining))}" aria-label="Time remaining"><span data-timer-bar style="width:${pct}%"></span></div>
         <div class="timer__buttons">
           ${running
-            ? `<button class="btn btn--ghost btn--sm" data-timer="pause">⏸ Pause</button>`
-            : `<button class="btn btn--primary btn--sm" data-timer="start">▶ Start</button>`}
-          <button class="btn btn--ghost btn--sm" data-timer="reset">↺ Reset</button>
-          <label class="timer__duration">
-            length
-            <select data-timer-duration>
+            ? `<button class="btn btn--ghost btn--sm" data-timer="pause" aria-label="Pause timer"><span aria-hidden="true">⏸</span> Pause</button>`
+            : `<button class="btn btn--primary btn--sm" data-timer="start" aria-label="Start timer"><span aria-hidden="true">▶</span> Start</button>`}
+          <button class="btn btn--ghost btn--sm" data-timer="reset" aria-label="Reset timer"><span aria-hidden="true">↺</span> Reset</button>
+          <label class="timer__duration" for="timer-duration-select">
+            Discussion length
+            <select id="timer-duration-select" data-timer-duration aria-label="Discussion length">
               ${[120, 180, 300, 480, 600, 900].map((s) =>
                 `<option value="${s}" ${s === duration ? 'selected' : ''}>${formatTime(s)}</option>`
               ).join('')}
             </select>
           </label>
         </div>
-      </div>
+      </section>
     `;
     wireButtons();
     lastSignature = signature;
@@ -82,11 +82,19 @@ function render() {
     // Patch only what actually changed this tick.
     const timeEl = container.querySelector('[data-timer-time]');
     const barEl = container.querySelector('[data-timer-bar]');
+    const ariaEl = container.querySelector('[data-timer-aria]');
+    const progressEl = container.querySelector('.timer__progress');
+    const sectionEl = container.querySelector('.timer');
     if (timeEl) {
-      timeEl.textContent = mmss;
+      // Preserve the visually-hidden aria sibling.
+      const ariaText = ariaEl ? ariaEl.textContent : '';
+      timeEl.childNodes[0].nodeValue = mmss;
       timeEl.classList.toggle('is-low', low);
     }
+    if (ariaEl) ariaEl.textContent = ' ' + ariaTimeLabel(remaining, duration);
     if (barEl) barEl.style.width = `${pct}%`;
+    if (progressEl) progressEl.setAttribute('aria-valuenow', String(remaining === null ? duration : Math.max(0, Math.round(remaining))));
+    if (sectionEl) sectionEl.classList.toggle('is-paused', !running);
   }
 }
 
@@ -185,4 +193,14 @@ function formatTime(totalSec) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${String(r).padStart(2, '0')}`;
+}
+
+function ariaTimeLabel(remaining, duration) {
+  const s = Math.max(0, Math.round(remaining === null ? duration : remaining));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  const parts = [];
+  if (m > 0) parts.push(`${m} minute${m === 1 ? '' : 's'}`);
+  if (r > 0 || m === 0) parts.push(`${r} second${r === 1 ? '' : 's'}`);
+  return `${parts.join(' ')} remaining`;
 }

@@ -83,6 +83,9 @@ function flash(msg) {
     el = document.createElement('div');
     el.id = 'flash-error';
     el.className = 'flash-error';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
     document.body.appendChild(el);
   }
   el.textContent = msg;

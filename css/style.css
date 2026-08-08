@@ -6,7 +6,7 @@
   --bg-elev:       #fffdf8;   /* card surface */
   --ink:           #2b2620;   /* near-black, warm */
   --ink-soft:      #6b6357;
-  --ink-faint:     #a89f90;
+  --ink-faint:     #756c5e;   /* darkened from #a89f90 for WCAG AA 4.5:1 (4.60 on bg, 5.08 on bg-elev) */
   --line:          #e6ddcf;
   --accent:        #8a5a2b;   /* coffee bean */
   --accent-soft:   #c8a47a;
@@ -18,6 +18,7 @@
   --radius-sm:     6px;
   --col-w:         min(320px, 25vw);
   --font:          system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --focus-ring:    0 0 0 2px var(--bg), 0 0 0 4px var(--accent);  /* 2px accent outline with bg gap; AA 2.4.13 */
 }
 
 * { box-sizing: border-box; }
@@ -33,6 +34,9 @@ html, body {
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+
+/* Visible focus for any interactive element not explicitly styled (WCAG 2.4.7, 2.4.13). */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Buttons ──────────────────────────────────────────────────────── */
 .btn {
@@ -114,21 +118,46 @@ a:hover { text-decoration: underline; }
   padding: .1rem .35rem;
 }
 .muted { color: var(--ink-faint); }
+
+/* Visually hidden but available to screen readers (WCAG 4.1.2 / 1.3.1). */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 .landing__columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   margin-top: 2rem;
+  list-style: none;
+  padding: 0;
+  margin: 2rem 0 0;
 }
 .landing__col {
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 1.25rem;
+  /* Flat legend treatment — not button-like (no elevated surface, border, or shadow). */
+  background: transparent;
+  border: 0;
+  border-top: 2px solid var(--accent);   /* AA 1.4.11: 5.22:1 on bg, passes 3:1 non-text */
+  border-radius: 0;
+  padding: .75rem 0 0;
   text-align: left;
 }
 .landing__col h3 { margin: 0 0 .35rem; font-size: 1rem; }
 .landing__col p { margin: 0; color: var(--ink-soft); font-size: .85rem; }
+.landing__how-title {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--ink-soft);
+  margin: 0 0 .5rem;
+  font-weight: 600;
+}
 
 /* ── Site footer ─────────────────────────────────────────────────── */
 .site-footer {
@@ -140,7 +169,7 @@ a:hover { text-decoration: underline; }
   font-size: .85rem;
   line-height: 1.5;
 }
-.site-footer a { color: var(--accent); }
+.site-footer a { color: var(--accent); text-decoration: underline; }
 
 /* ── Identity badge ───────────────────────────────────────────────── */
 .identity-badge {
@@ -196,7 +225,7 @@ a:hover { text-decoration: underline; }
   max-width: 22rem;
 }
 .topbar__title:hover { border-color: var(--line); background: var(--bg); }
-.topbar__title:focus { border-color: var(--accent-soft); background: var(--bg); outline: none; }
+.topbar__title:focus { border-color: var(--accent); background: var(--bg); box-shadow: var(--focus-ring); outline: none; }
 .topbar__slug {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: .75rem;
@@ -295,7 +324,7 @@ a:hover { text-decoration: underline; }
 }
 .column__cards.is-drop-over {
   background: rgba(138, 90, 43, .08);
-  outline-color: var(--accent-soft);
+  outline-color: var(--accent);
 }
 
 .column__add {
@@ -317,7 +346,7 @@ a:hover { text-decoration: underline; }
   min-height: 2rem;
   max-height: 6rem;
 }
-.column__add textarea:focus { outline: none; border-color: var(--accent-soft); }
+.column__add textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
 
 /* ── Cards ────────────────────────────────────────────────────────── */
 .card {
@@ -370,7 +399,29 @@ a:hover { text-decoration: underline; }
   resize: none;
   min-height: 2.5rem;
 }
-.card__edit:focus { outline: none; }
+.card__edit:focus { outline: none; box-shadow: var(--focus-ring); }
+
+/* Keyboard move controls (SC 2.5.7). */
+.card__move {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  margin: .4rem 0 0;
+}
+.card__move-select {
+  flex: 1;
+  font: inherit;
+  font-size: .75rem;
+  padding: .2rem .3rem;
+  border: 1px solid #a87f44;   /* AA 1.4.11: 3.23:1 on bg, passes non-text 3:1 (stronger than --line) */
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--ink);
+  min-width: 0;
+}
+.card__move-select:focus { outline: none; box-shadow: var(--focus-ring); }
+.card__move .btn--icon { font-size: .8rem; padding: .2rem .35rem; }
+.card__move .btn--icon:disabled { opacity: .45; cursor: not-allowed; }
 
 .card__footer {
   display: flex;
@@ -384,8 +435,11 @@ a:hover { text-decoration: underline; }
 .card__actions { display: flex; gap: .15rem; margin-left: auto; }
 
 /* Vote icon: inherits color via currentColor, sizes to the surrounding text. */
-.icon--thumb { width: 2em; height: 2em; vertical-align: -0.125em; }
+.icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; }
+.icon--thumb { width: 1.1em; height: 1.1em; }
 .btn--vote { display: inline-flex; align-items: center; gap: .25rem; }
+.btn--vote .icon { font-size: 1.3rem; vertical-align: -.4rem; }
+.card__votes-static { display: inline-flex; align-items: center; gap: .2rem; }
 
 /* ── Flash error ──────────────────────────────────────────────────── */
 .flash-error {
@@ -419,6 +473,16 @@ a:hover { text-decoration: underline; }
   .topbar { padding: .6rem .75rem; }
   .board { padding: .75rem; }
   .topbar__right .btn--ghost { padding: .35rem .5rem; }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── Print ────────────────────────────────────────────────────────── */

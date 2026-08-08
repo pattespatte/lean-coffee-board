@@ -14,6 +14,8 @@ let board = null;             // { id, slug, title, timer_* }
 let cards = [];               // [{ id, board_id, column, content, author_name, author_color, position, votes }]
 let unsubscribe = null;
 let titleInputTimer = null;
+let srInsertBuffer = [];      // pending card inserts awaiting SR announcement
+let srInsertTimer = null;     // throttle timer for SR announcements
 
 const COLUMNS = [
   { key: 'to_discuss',  label: 'To Discuss' },
@@ -73,6 +75,7 @@ function handleRealtime(payload) {
     if (!cards.some((c) => c.id === row.id)) {
       cards.push(row);
       insertSorted();
+      queueSrInsertAnnouncement(row);
     }
   } else if (payload.eventType === 'UPDATE') {
     const i = cards.findIndex((c) => c.id === row.id);
@@ -86,6 +89,63 @@ function handleRealtime(payload) {
 function insertSorted() {
   cards.sort((a, b) =>
     a.column_key.localeCompare(b.column_key) || a.position - b.position);
+}
+
+// Throttled screen-reader announcement of new cards (WCAG 4.1.3).
+// Buffers inserts for 800ms, then announces a single consolidated message
+// so a board restore with many cards doesn't flood the live region.
+function queueSrInsertAnnouncement(card) {
+  srInsertBuffer.push(card);
+  if (srInsertTimer) return; // already pending; will batch
+  srInsertTimer = setTimeout(() => {
+    srInsertTimer = null;
+    const count = srInsertBuffer.length;
+    srInsertBuffer = [];
+    if (count === 0) return;
+    const el = document.getElementById('sr-status');
+    if (!el) return;
+    el.textContent = count === 1
+      ? 'A new topic was added'
+      : `${count} new topics were added`;
+  }, 800);
+}
+
+// Position math for keyboard-driven moves (mirrors js/dnd.js float-position scheme).
+// Returns the new position for `cardId` if moved one slot up/down within its column,
+// or null if the card is already at the top/bottom (no move possible).
+function positionForMoveUp(cardId) {
+  const card = cards.find((c) => c.id === cardId);
+  if (!card) return null;
+  const sorted = cards
+    .filter((c) => c.column_key === card.column_key)
+    .sort((a, b) => a.position - b.position);
+  const idx = sorted.findIndex((c) => c.id === cardId);
+  if (idx <= 0) return null; // already first
+  const prevPos = idx > 1 ? sorted[idx - 2].position : 0;
+  const targetPos = sorted[idx - 1].position;
+  return (prevPos + targetPos) / 2;
+}
+function positionForMoveDown(cardId) {
+  const card = cards.find((c) => c.id === cardId);
+  if (!card) return null;
+  const sorted = cards
+    .filter((c) => c.column_key === card.column_key)
+    .sort((a, b) => a.position - b.position);
+  const idx = sorted.findIndex((c) => c.id === cardId);
+  if (idx === -1 || idx >= sorted.length - 1) return null; // already last
+  const targetPos = sorted[idx + 1].position;
+  const nextPos = idx < sorted.length - 2 ? sorted[idx + 2].position : targetPos + 2000;
+  return (targetPos + nextPos) / 2;
+}
+
+// Where in the order is this card (1-based), within its column?
+function cardRankInColumn(cardId) {
+  const card = cards.find((c) => c.id === cardId);
+  if (!card) return { rank: 0, total: 0 };
+  const sorted = cards
+    .filter((c) => c.column_key === card.column_key)
+    .sort((a, b) => a.position - b.position);
+  return { rank: sorted.findIndex((c) => c.id === cardId) + 1, total: sorted.length };
 }
 
 // ── Mutations ───────────────────────────────────────────────────────────
@@ -198,27 +258,32 @@ function renderShell() {
   const identity = getIdentity();
   document.body.innerHTML = `
     <header class="topbar">
+      <h1 class="visually-hidden">${escapeHtml(board.title || 'Untitled meeting')}</h1>
       <div class="topbar__left">
-        <a href="#/" class="topbar__logo">☕</a>
+        <a href="#/" class="topbar__logo" aria-label="Lean Coffee Board home">☕</a>
         <input id="board-title" class="topbar__title" type="text"
-               placeholder="Untitled meeting" value="${escapeAttr(board.title || '')}">
+               placeholder="Untitled meeting" value="${escapeAttr(board.title || '')}"
+               aria-label="Board title">
         <span class="topbar__slug">#/${escapeHtml(board.slug)}</span>
       </div>
       <div class="topbar__right">
-        <span class="identity-badge" id="identity-badge" title="Your identity (per browser)">
-          <span class="identity-badge__dot" style="background:${identity.color}"></span>
-          <span>${escapeHtml(identity.name)}</span>
+        <span class="identity-badge" id="identity-badge" title="Your identity (per browser)" role="img" aria-label="Your identity: ${escapeAttr(identity.name)}">
+          <span class="identity-badge__dot" aria-hidden="true" style="background:${identity.color}"></span>
+          <span aria-hidden="true">${escapeHtml(identity.name)}</span>
         </span>
-        <button id="export-json-btn" class="btn btn--ghost" title="Download board as JSON">⬇ JSON</button>
-        <button id="export-print-btn" class="btn btn--ghost" title="Print or save as PDF">🖨 Print</button>
+        <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> JSON</button>
+        <button id="export-print-btn" class="btn btn--ghost" aria-label="Print or save as PDF"><span aria-hidden="true">🖨</span> Print</button>
       </div>
     </header>
     <div id="timer-bar"></div>
-    <main id="board" class="board"></main>
+    <main id="board" class="board" aria-label="Board"></main>
     <footer class="site-footer">
       No ads. No login. All free. Source code at
       <a href="https://github.com/pattespatte/lean-coffee-board">GitHub</a>.
     </footer>
+    <!-- Live regions for screen-reader status announcements (WCAG 4.1.3). -->
+    <div id="flash-error" class="flash-error" role="alert" aria-live="assertive" aria-atomic="true"></div>
+    <div id="sr-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
   `;
 
   document.getElementById('board-title').addEventListener('input', (e) => {
@@ -244,17 +309,18 @@ function renderBoard() {
     const colCards = cards.filter((c) => c.column_key === col.key);
     const cardsHtml = colCards.map((card) => renderCard(card, col.key)).join('');
     return `
-      <section class="column" data-column="${col.key}">
+      <section class="column" data-column="${col.key}" aria-label="${col.label}">
         <header class="column__head">
           <h2>${col.label}</h2>
-          <span class="column__count">${colCards.length}</span>
-          ${col.key === 'to_discuss' ? `<button class="btn btn--ghost btn--sm" data-sort-votes>Sort by votes</button>` : ''}
+          <span class="column__count">${colCards.length}<span class="visually-hidden"> topic${colCards.length === 1 ? '' : 's'}</span></span>
+          ${col.key === 'to_discuss' ? `<button class="btn btn--ghost btn--sm" data-sort-votes aria-label="Sort To Discuss by votes">Sort by votes</button>` : ''}
         </header>
         <div class="column__cards" data-dropzone="${col.key}">
           ${cardsHtml}
         </div>
         <form class="column__add" data-add-form="${col.key}">
-          <textarea data-add-input="${col.key}" placeholder="Add a topic…"
+          <label class="visually-hidden" for="add-input-${col.key}">Add a topic to ${col.label}</label>
+          <textarea id="add-input-${col.key}" data-add-input="${col.key}" placeholder="Add a topic…"
                     rows="1"></textarea>
           <button type="submit" class="btn btn--ghost btn--sm">Add</button>
         </form>
@@ -276,29 +342,73 @@ function renderCard(card, columnKey) {
   const voted = getVotedCardIds(currentSlug).has(card.id);
   const showVote = columnKey === 'to_discuss';
   const pending = card._pending ? ' card--pending' : '';
+  const votes = card.votes || 0;
+  const author = card.author_name || 'Someone';
+  const preview = truncate(card.content, 60);
+  const voteLabel = voted
+    ? `Remove vote, ${votes} vote${votes === 1 ? '' : 's'}`
+    : `Vote for this topic, ${votes} vote${votes === 1 ? '' : 's'}`;
+  const thumbIcon = '<svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path><path d="m4 18v-9"></path></svg>';
+  // Keyboard-move controls (SC 2.5.7): hidden on pending cards (not yet persisted).
+  const moveControls = card._pending ? '' : renderCardMoveControls(card);
   return `
     <article class="card${pending}" draggable="true"
              data-card-id="${card.id}" data-column="${card.column_key}"
-             data-position="${card.position}">
+             data-position="${card.position}"
+             aria-label="Topic by ${escapeAttr(author)}: ${escapeAttr(preview)}">
       <div class="card__author">
-        <span class="card__dot" style="background:${card.author_color || '#999'}"></span>
-        <span class="card__author-name">${escapeHtml(card.author_name || 'Someone')}</span>
+        <span class="card__dot" aria-hidden="true" style="background:${card.author_color || '#999'}"></span>
+        <span class="card__author-name">${escapeHtml(author)}</span>
       </div>
       <div class="card__content" data-card-content>${escapeHtml(card.content)}</div>
+      ${moveControls}
       <div class="card__footer">
         ${showVote ? `
           <button class="btn btn--vote ${voted ? 'is-voted' : ''}"
                   data-vote="${card.id}"
-                  title="Vote for this topic">
-            <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"/><path d="m4 18v-9"/></svg>
-            <span class="card__votes">${card.votes || 0}</span>
-          </button>` : `<span class="card__votes-static">${card.votes || 0} <svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"/><path d="m4 18v-9"/></svg></span>`}
+                  aria-label="${voteLabel}"
+                  aria-pressed="${voted ? 'true' : 'false'}">
+            ${thumbIcon}
+            <span class="card__votes" aria-hidden="true">${votes}</span>
+          </button>` : `<span class="card__votes-static">${votes} ${thumbIcon}<span class="visually-hidden"> vote${votes === 1 ? '' : 's'}</span></span>`}
         <div class="card__actions">
-          <button class="btn btn--icon" data-edit="${card.id}" title="Edit">✎</button>
-          <button class="btn btn--icon" data-delete="${card.id}" title="Delete">🗑</button>
+          <button class="btn btn--icon" data-edit="${card.id}" aria-label="Edit topic">
+            <span aria-hidden="true">✎</span>
+          </button>
+          <button class="btn btn--icon" data-delete="${card.id}" aria-label="Delete topic">
+            <span aria-hidden="true">🗑</span>
+          </button>
         </div>
       </div>
     </article>
+  `;
+}
+
+// Keyboard-operable move controls (WCAG 2.2 SC 2.5.7 Dragging Movements).
+// A "Move to column" select + Move up/down buttons, so cards can be rearranged
+// without a pointer. Drag-and-drop (dnd.js) remains the pointer path.
+function renderCardMoveControls(card) {
+  const { rank, total } = cardRankInColumn(card.id);
+  const atTop = rank <= 1;
+  const atBottom = rank >= total || total <= 1;
+  const options = COLUMNS.map((c) =>
+    `<option value="${c.key}"${c.key === card.column_key ? ' selected' : ''}>${c.label}</option>`
+  ).join('');
+  return `
+    <div class="card__move">
+      <label class="visually-hidden" for="move-to-${card.id}">Move topic to column</label>
+      <select id="move-to-${card.id}" class="card__move-select" data-move-col="${card.id}">
+        ${options}
+      </select>
+      <button class="btn btn--icon" data-move-up="${card.id}"
+              aria-label="Move topic up"${atTop ? ' disabled aria-disabled="true"' : ''}>
+        <span aria-hidden="true">↑</span>
+      </button>
+      <button class="btn btn--icon" data-move-down="${card.id}"
+              aria-label="Move topic down"${atBottom ? ' disabled aria-disabled="true"' : ''}>
+        <span aria-hidden="true">↓</span>
+      </button>
+    </div>
   `;
 }
 
@@ -333,6 +443,35 @@ function wireCardControls() {
   document.querySelectorAll('[data-vote]').forEach((btn) => {
     btn.addEventListener('click', () => toggleVote(currentSlug, btn.dataset.vote, cards, setCardVotes));
   });
+  // Keyboard move controls (SC 2.5.7).
+  document.querySelectorAll('[data-move-col]').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      const cardId = sel.dataset.moveCol;
+      const targetCol = sel.value;
+      const card = cards.find((c) => c.id === cardId);
+      if (card && card.column_key !== targetCol) {
+        moveCard(cardId, targetCol, nextPosition(targetCol));
+      }
+    });
+  });
+  document.querySelectorAll('[data-move-up]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      const cardId = btn.dataset.moveUp;
+      const card = cards.find((c) => c.id === cardId);
+      const newPos = positionForMoveUp(cardId);
+      if (card && newPos !== null) moveCard(cardId, card.column_key, newPos);
+    });
+  });
+  document.querySelectorAll('[data-move-down]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      const cardId = btn.dataset.moveDown;
+      const card = cards.find((c) => c.id === cardId);
+      const newPos = positionForMoveDown(cardId);
+      if (card && newPos !== null) moveCard(cardId, card.column_key, newPos);
+    });
+  });
 }
 
 function wireSortButton() {
@@ -349,6 +488,9 @@ function onBoardChanged() {
   if (input && document.activeElement !== input) {
     input.value = board.title || '';
   }
+  // Keep the visually-hidden h1 in sync for screen-reader users.
+  const h1 = document.querySelector('.topbar h1');
+  if (h1) h1.textContent = board.title || 'Untitled meeting';
   // Timer UI reads board state each tick; nothing extra needed here.
 }
 
@@ -399,9 +541,14 @@ function updateVoteRemainingIndicator() {
 function flashError(msg) {
   let el = document.getElementById('flash-error');
   if (!el) {
+    // Fallback for views without renderShell (e.g. landing). The board view
+    // pre-renders this as a live region in renderShell.
     el = document.createElement('div');
     el.id = 'flash-error';
     el.className = 'flash-error';
+    el.setAttribute('role', 'alert');
+    el.setAttribute('aria-live', 'assertive');
+    el.setAttribute('aria-atomic', 'true');
     document.body.appendChild(el);
   }
   el.textContent = msg;
@@ -416,3 +563,7 @@ function escapeHtml(s) {
   })[c]);
 }
 function escapeAttr(s) { return escapeHtml(s); }
+function truncate(s, n) {
+  s = String(s ?? '');
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
