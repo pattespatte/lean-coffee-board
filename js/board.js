@@ -401,11 +401,11 @@ function renderCardMoveControls(card) {
         ${options}
       </select>
       <button class="btn btn--icon" data-move-up="${card.id}"
-              aria-label="Move topic up"${atTop ? ' disabled aria-disabled="true"' : ''}>
+              aria-label="Move topic up"${atTop ? ' disabled' : ''}>
         <span aria-hidden="true">↑</span>
       </button>
       <button class="btn btn--icon" data-move-down="${card.id}"
-              aria-label="Move topic down"${atBottom ? ' disabled aria-disabled="true"' : ''}>
+              aria-label="Move topic down"${atBottom ? ' disabled' : ''}>
         <span aria-hidden="true">↓</span>
       </button>
     </div>
