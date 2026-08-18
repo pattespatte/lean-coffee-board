@@ -1,21 +1,30 @@
-# Prevents the Supabase free-tier project from being paused after 1 week
-# of API inactivity. Runs every 5 days at 04:00 UTC, well inside the 7-day
-# window, and can be triggered manually from the Actions tab.
+# Prevents the Supabase free-tier project from being paused for low activity.
 #
-# Why this hits the API and not the Pages site: the pause timer counts API
-# requests at the Supabase project, not visits to the static frontend. A
-# read-only query against the boards table is the cheapest way to register
-# activity without mutating any data.
+# Supabase's pause policy is volume-based over a rolling 7-day window: a
+# project is paused when its total user database activity for the week is too
+# low. Their docs put the bar at "typically a few user requests to the
+# database each day". A single ping every 5 days (≈2 queries/week) proved
+# insufficient – the project was flagged for pausing in Aug 2026 even though
+# both pings that week returned HTTP 200.
 #
-# The anon key is intentionally committed – access is governed by RLS, not
-# key secrecy. See js/config.js and supabase/schema.sql.
+# So this runs daily and issues a handful of read-only queries against both
+# tables – ~40 user queries/week, comfortably past the documented bar while
+# staying trivial load. It hits the API, not the Pages site: dashboard or
+# frontend visits don't count, database queries do. The anon key is
+# intentionally committed – access is governed by RLS, not key secrecy.
+# See js/config.js and supabase/schema.sql.
+#
+# This is best-effort against an unspecified threshold. The only guaranteed
+# prevention is the Pro plan; if the project ever gets paused anyway, that is
+# the signal to upgrade (or accept pausing between lean-coffee sessions).
 name: Supabase keep-alive
 
 on:
   schedule:
-    # Every 5 days at 04:00 UTC. GitHub's cron is approximate for scheduled
-    # workflows on free runners; the 2-day margin absorbs any drift.
-    - cron: '0 4 */5 * *'
+    # Daily at 04:00 UTC. GitHub's cron for scheduled workflows is
+    # approximate, and a fully missed run still leaves 6 active days in the
+    # 7-day window, so the margin is large.
+    - cron: '0 4 * * *'
   workflow_dispatch: {} # manual "Run workflow" button in the Actions tab
 
 # Avoid overlapping runs if GitHub delays a scheduled fire.
@@ -37,22 +46,40 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Cheap read-only query: select one id from boards. This is enough
-          # to register API activity and reset the 1-week inactivity timer.
-          http=$(curl -sS -o /tmp/body -w '%{http_code}' \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-            --max-time 30 \
-            "${SUPABASE_URL}/rest/v1/boards?select=id&limit=1")
+          # Read-only selects spread over ~15 s so they register as separate
+          # requests. Vary the projected columns to make the queries distinct.
+          queries=(
+            "boards?select=id&limit=1"
+            "cards?select=id&limit=1"
+            "boards?select=slug,created_at&limit=1"
+            "cards?select=board_id,column_key&limit=1"
+            "boards?select=id,slug&limit=1"
+            "cards?select=id,votes&limit=1"
+          )
 
-          echo "HTTP ${http}"
-          cat /tmp/body; echo
+          fail=0
+          for i in "${!queries[@]}"; do
+            q="${queries[$i]}"
+            http=$(curl -sS -o /tmp/body -w '%{http_code}' \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+              --max-time 30 \
+              "${SUPABASE_URL}/rest/v1/${q}")
 
-          # 200 = OK, 429 = rate-limited (still counts as activity). Anything
-          # else is a real problem – fail loudly so the run is visible as red.
-          if [ "$http" != "200" ] && [ "$http" != "429" ]; then
-            echo "::error::Supabase ping failed with HTTP ${http}"
-            exit 1
-          fi
+            echo "[$((i+1))/${#queries[@]}] GET /rest/v1/${q} -> HTTP ${http}"
+            cat /tmp/body; echo
 
-          echo "Supabase activity registered."
+            # 200 = OK, 429 = rate-limited (still counts as activity).
+            # Anything else is a real problem – collect it and fail loudly
+            # below so the run is visible as red.
+            if [ "$http" != "200" ] && [ "$http" != "429" ]; then
+              echo "::error::GET ${q} failed with HTTP ${http}"
+              fail=1
+            fi
+
+            [ "$((i+1))" -lt "${#queries[@]}" ] && sleep 3
+          done
+
+          [ "$fail" -eq 0 ] || exit 1
+
+          echo "Supabase activity registered (${#queries[@]} queries)."
