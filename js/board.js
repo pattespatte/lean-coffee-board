@@ -280,6 +280,8 @@ function renderShell() {
     <footer class="site-footer">
       No ads. No login. All free. Source code at
       <a href="https://github.com/pattespatte/lean-coffee-board">GitHub</a>.
+      Background artwork “Espresso Cup With A Rich Dark Coffee Shot” by Rodigart47 –
+      <a href="https://pngtree.com/freepng/espresso-cup-with-a-rich-dark-coffee-shot_15473319.html">free PNG images from pngtree.com</a>.
     </footer>
     <!-- Live regions for screen-reader status announcements (WCAG 4.1.3). -->
     <div id="flash-error" class="flash-error" role="alert" aria-live="assertive" aria-atomic="true"></div>

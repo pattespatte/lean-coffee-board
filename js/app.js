@@ -92,6 +92,8 @@ function renderLanding() {
     <footer class="site-footer">
       No ads. No login. All free. Source code at
       <a href="https://github.com/pattespatte/lean-coffee-board">GitHub</a>.
+      Background artwork “Espresso Cup With A Rich Dark Coffee Shot” by Rodigart47 –
+      <a href="https://pngtree.com/freepng/espresso-cup-with-a-rich-dark-coffee-shot_15473319.html">free PNG images from pngtree.com</a>.
     </footer>
   `;
   document.getElementById('new-board-btn').addEventListener('click', createBoard);
@@ -109,6 +111,8 @@ function renderError(err) {
     <footer class="site-footer">
       No ads. No login. All free. Source code at
       <a href="https://github.com/pattespatte/lean-coffee-board">GitHub</a>.
+      Background artwork “Espresso Cup With A Rich Dark Coffee Shot” by Rodigart47 –
+      <a href="https://pngtree.com/freepng/espresso-cup-with-a-rich-dark-coffee-shot_15473319.html">free PNG images from pngtree.com</a>.
     </footer>
   `;
 }
