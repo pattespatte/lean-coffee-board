@@ -338,7 +338,7 @@ a:hover { text-decoration: underline; }
   font: inherit;
   font-size: .85rem;
   resize: none;
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
   border-radius: var(--radius-sm);
   padding: .4rem .5rem;
   background: var(--bg-elev);

@@ -320,9 +320,9 @@ function renderBoard() {
         </div>
         <form class="column__add" data-add-form="${col.key}">
           <label class="visually-hidden" for="add-input-${col.key}">Add a topic to ${col.label}</label>
-          <textarea id="add-input-${col.key}" data-add-input="${col.key}" placeholder="Add a topic…"
-                    rows="1"></textarea>
-          <button type="submit" class="btn btn--ghost btn--sm">Add</button>
+          <textarea id="add-input-${col.key}" data-add-input="${col.key}" placeholder="Your topic goes here…"
+            rows="1"></textarea>
+          <button type="submit" class="btn btn--primary btn--sm">Add topic</button>
         </form>
       </section>
     `;
