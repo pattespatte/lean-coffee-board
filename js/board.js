@@ -7,6 +7,7 @@ import { attachDragAndDrop } from './dnd.js';
 import { startTimerUI, stopTimerUI, setBoardRef } from './timer.js';
 import { toggleVote, getVotedCardIds, sortToDiscussByVotes, votesRemaining } from './voting.js';
 import { exportJson, printBoard } from './export.js';
+import { renderMarkdown, stripMarkdown } from './markdown.js';
 
 // ── Module state ────────────────────────────────────────────────────────
 let currentSlug = null;
@@ -325,7 +326,7 @@ function renderBoard() {
         </div>
         <form class="column__add" data-add-form="${col.key}">
           <label class="visually-hidden" for="add-input-${col.key}">Add a topic to ${col.label}</label>
-          <textarea id="add-input-${col.key}" data-add-input="${col.key}" placeholder="Your topic goes here…"
+          <textarea id="add-input-${col.key}" data-add-input="${col.key}" placeholder="(Markdown support)"
             rows="1"></textarea>
           <button type="submit" class="btn btn--primary btn--sm">Add topic</button>
         </form>
@@ -349,7 +350,7 @@ function renderCard(card, columnKey) {
   const pending = card._pending ? ' card--pending' : '';
   const votes = card.votes || 0;
   const author = card.author_name || 'Someone';
-  const preview = truncate(card.content, 60);
+  const preview = truncate(stripMarkdown(card.content), 60);
   const voteLabel = voted
     ? `Remove vote, ${votes} vote${votes === 1 ? '' : 's'}`
     : `Vote for this topic, ${votes} vote${votes === 1 ? '' : 's'}`;
@@ -365,7 +366,7 @@ function renderCard(card, columnKey) {
         <span class="card__dot" aria-hidden="true" style="background:${card.author_color || '#999'}"></span>
         <span class="card__author-name">${escapeHtml(author)}</span>
       </div>
-      <div class="card__content" data-card-content>${escapeHtml(card.content)}</div>
+      <div class="card__content" data-card-content>${renderMarkdown(card.content)}</div>
       ${moveControls}
       <div class="card__footer">
         ${showVote ? `

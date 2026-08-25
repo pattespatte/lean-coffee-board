@@ -1,5 +1,7 @@
 // Board export: JSON download + printable summary.
 
+import { renderMarkdown } from './markdown.js';
+
 const COLUMN_LABELS = {
   to_discuss: 'To Discuss',
   discussing: 'Discussing',
@@ -54,7 +56,7 @@ export function printBoard(board, cards) {
     return `<ul>${items.map((c) => `
       <li>
         <span class="print-votes">${c.votes ? `<svg class="print-thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"/><path d="m4 18v-9"/></svg>${c.votes}` : ''}</span>
-        <span class="print-text">${escapeHtml(c.content)}</span>
+        <span class="print-text">${renderMarkdown(c.content)}</span>
       </li>`).join('')}</ul>`;
   };
 
@@ -73,6 +75,9 @@ export function printBoard(board, cards) {
       .print-votes { color: #8a5a2b; font-weight: 600; min-width: 2.5rem; font-size: .85rem; display: inline-flex; align-items: center; gap: .25rem; }
       .print-thumb { width: 1.7rem; height: 1.7rem; }
       .print-text { flex: 1; }
+      .print-text code { font-family: ui-monospace, Menlo, monospace; font-size: .82em; background: #f3ece0; border-radius: 3px; padding: .05em .25em; }
+      .print-text pre { margin: .2rem 0; padding: .3rem .4rem; background: #f3ece0; border: 1px solid #e6ddcf; border-radius: 4px; white-space: pre-wrap; }
+      .print-text pre code { background: none; padding: 0; }
       .print-empty { color: #a89f90; font-style: italic; }
       section.actions h2 { color: #4a7c4a; }
       section.actions { background: #f4f7f4; padding: .75rem 1rem; border-radius: 8px; }

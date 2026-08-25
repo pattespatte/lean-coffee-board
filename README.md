@@ -16,6 +16,7 @@ Four-column Kanban: **To Discuss → Discussing → Discussed → Actions**. Dra
 - **Voting** – 3 votes per person (Lean Coffee standard) to prioritise the To Discuss column. One click to sort by votes.
 - **Synced discussion timer** – start, pause, reset; pick from 2–15 minute lengths. Every client computes remaining time from server timestamps, so it stays in sync without a ticking server.
 - **Random identity** – each browser gets a friendly name + colour (e.g. "Curious Otter"), so cards are attributable without accounts.
+- **Markdown topics** – card text supports `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``, fenced code blocks, links like `[text](https://…)` and autolinks like `<https://…>`. Rendered by a small built-in formatter: input is HTML-escaped first and only `https:`/`mailto:` links are allowed, so card text can never inject HTML.
 - **Export** – download the board as JSON, or print a clean summary (decisions and action items highlighted).
 - **No build step** – plain HTML/CSS/JS served as-is.
 
@@ -101,6 +102,7 @@ lean-coffee-board/
 │   ├── timer.js                # Synced discussion timer
 │   ├── voting.js               # 3-votes-per-person + sort by votes
 │   ├── identity.js             # Random name/colour, per browser
+│   ├── markdown.js             # Safe Markdown subset for topic text
 │   └── export.js               # JSON + print export
 ├── supabase/schema.sql         # Tables, RLS, realtime (run once)
 ├── .nojekyll                   # Disable Jekyll processing on Pages

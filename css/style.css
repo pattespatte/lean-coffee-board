@@ -450,10 +450,33 @@ a:hover { text-decoration: underline; }
 .card__content {
   font-size: .9rem;
   line-height: 1.4;
-  white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: anywhere;
 }
+/* Markdown output (js/markdown.js renders newlines as <br>). */
+.card__content code.md-inline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .82em;
+  background: rgba(43, 38, 32, .07);
+  border-radius: 4px;
+  padding: .08em .3em;
+}
+.card__content pre.md-block {
+  margin: .35rem 0;
+  padding: .4rem .5rem;
+  background: #f3ece0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+.card__content pre.md-block code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .78rem;
+  background: none;
+  padding: 0;
+  white-space: pre;
+}
+.card__content a { text-decoration: underline; text-underline-offset: 2px; }
 .card__edit {
   width: 100%;
   font: inherit;
