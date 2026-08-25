@@ -18,6 +18,11 @@ create table if not exists public.boards (
 
 create index if not exists idx_boards_slug on public.boards (slug);
 
+-- Card currently in focus for the room (click a card to select it).
+-- Nullable: null = no selection. Cleared automatically if the card is deleted.
+alter table public.boards
+  add column if not exists selected_card_id uuid references public.cards(id) on delete set null;
+
 -- ── cards ───────────────────────────────────────────────────────────────
 create table if not exists public.cards (
   id           uuid primary key default gen_random_uuid(),

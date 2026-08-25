@@ -432,6 +432,13 @@ a:hover { text-decoration: underline; }
 .card.is-drop-above { box-shadow: 0 -3px 0 var(--accent); }
 .card.is-drop-below { box-shadow: 0 3px 0 var(--accent); }
 .card--pending { opacity: .55; font-style: italic; }
+/* Selected card: the topic the room is looking at. Border + ring + warm tint
+   so it reads clearly from the back of the room. */
+.card.is-selected {
+  border-color: var(--accent);
+  background: #fbf3e2;
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-drag);
+}
 
 .card__author {
   display: flex;

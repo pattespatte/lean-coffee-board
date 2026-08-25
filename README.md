@@ -17,6 +17,7 @@ Four-column Kanban: **To Discuss → Discussing → Discussed → Actions**. Dra
 - **Synced discussion timer** – start, pause, reset; pick from 2–15 minute lengths. Every client computes remaining time from server timestamps, so it stays in sync without a ticking server.
 - **Random identity** – each browser gets a friendly name + colour (e.g. "Curious Otter"), so cards are attributable without accounts.
 - **Markdown topics** – card text supports `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``, fenced code blocks, links like `[text](https://…)` and autolinks like `<https://…>`. Rendered by a small built-in formatter: input is HTML-escaped first and only `https:`/`mailto:` links are allowed, so card text can never inject HTML.
+- **Card selection** – click a topic to highlight it for everyone in real time, so the audience always sees which topic is on the table. Click again to deselect, or another topic to switch.
 - **Export & import** – download the board as JSON, print a clean summary (decisions and action items highlighted), and import topics from a previous export. Importing appends to the current board and never touches existing cards.
 - **No build step** – plain HTML/CSS/JS served as-is.
 
@@ -80,7 +81,7 @@ python3 -m http.server 8000
 2. Copy the URL (it contains the `#/slug`) and share it with participants.
 3. Everyone adds topics to the **To Discuss** column.
 4. Each person spends their 3 votes (▲) on the topics they want to prioritise. Click **Sort by votes** to reorder.
-5. Drag the top topic to **Discussing** and start the timer.
+5. Drag the top topic to **Discussing**, start the timer, and click the card to highlight it for the room.
 6. When the timer ends, the group decides: continue (restart timer) or done (drag to **Discussed**). Capture decisions and next steps in the **Actions** column.
 7. Repeat until time runs out.
 8. Use **Print** to capture a summary, or **JSON** to export the raw board.

@@ -306,6 +306,12 @@ function renderShell() {
   document.getElementById('export-print-btn').addEventListener('click', () => printBoard(board, cards));
   document.getElementById('import-json-btn').addEventListener('click', pickImportFile);
 
+  // Card selection: click a card (or focus it + Enter/Space) to highlight the
+  // topic the room is looking at. Delegated on the persistent #board element.
+  const boardEl = document.getElementById('board');
+  boardEl.addEventListener('click', onBoardClick);
+  boardEl.addEventListener('keydown', onBoardKeydown);
+
   startTimerUI(board, document.getElementById('timer-bar'), (next) => { board = { ...board, ...next }; });
 }
 
@@ -350,6 +356,7 @@ function renderCard(card, columnKey) {
   const voted = getVotedCardIds(currentSlug).has(card.id);
   const showVote = columnKey === 'to_discuss';
   const pending = card._pending ? ' card--pending' : '';
+  const selected = board?.selected_card_id === card.id ? ' is-selected' : '';
   const votes = card.votes || 0;
   const author = card.author_name || 'Someone';
   const preview = truncate(stripMarkdown(card.content), 60);
@@ -360,7 +367,8 @@ function renderCard(card, columnKey) {
   // Keyboard-move controls (SC 2.5.7): hidden on pending cards (not yet persisted).
   const moveControls = card._pending ? '' : renderCardMoveControls(card);
   return `
-    <article class="card${pending}" draggable="true"
+    <article class="card${pending}${selected}" draggable="true"
+             tabindex="0"${selected ? ' aria-current="true"' : ''}
              data-card-id="${card.id}" data-column="${card.column_key}"
              data-position="${card.position}"
              aria-label="Topic by ${escapeAttr(author)}: ${escapeAttr(preview)}">
@@ -568,6 +576,70 @@ async function importJsonFile(file) {
   if (sr) sr.textContent = skipped > 0 ? `${message}, skipped ${skipped} invalid entr${skipped === 1 ? 'y' : 'ies'}` : message;
 }
 
+// ── Card selection ────────────────────────────────────────────────────
+// Clicking a card highlights it for everyone in real time (boards.selected_
+// card_id rides the existing board realtime channel). Selection is a room
+// pointer, not card data: one card per board, click again to deselect.
+const INTERACTIVE = 'button, select, textarea, input, a, label';
+
+function onBoardClick(e) {
+  if (e.target.closest(INTERACTIVE)) return;   // votes, move controls, links… keep their own behaviour
+  const cardEl = e.target.closest('.card');
+  if (cardEl) toggleSelection(cardEl.dataset.cardId);
+}
+
+function onBoardKeydown(e) {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const cardEl = e.target.closest?.('.card');
+  if (!cardEl || e.target !== cardEl) return;   // only when the card itself has focus
+  e.preventDefault();
+  toggleSelection(cardEl.dataset.cardId);
+}
+
+function toggleSelection(id) {
+  setSelectedCard(board?.selected_card_id === id ? null : id);
+}
+
+async function setSelectedCard(id) {
+  if (!board) return;
+  const prev = board.selected_card_id ?? null;
+  if (prev === id) return;
+  board = { ...board, selected_card_id: id };
+  applySelectionToDom();
+  announceSelection(id);
+  const { error } = await supabase.from('boards').update({ selected_card_id: id }).eq('id', board.id);
+  if (error) {
+    board = { ...board, selected_card_id: prev };
+    applySelectionToDom();
+    flashError(error.message);
+  }
+}
+
+// Sync the .is-selected class (and aria-current) with board.selected_card_id
+// without a re-render, so an in-progress card edit is never disturbed.
+function applySelectionToDom() {
+  const id = board?.selected_card_id ?? null;
+  document.querySelectorAll('.card.is-selected').forEach((el) => {
+    el.classList.remove('is-selected');
+    el.removeAttribute('aria-current');
+  });
+  if (id) {
+    const el = document.querySelector(`[data-card-id="${id}"]`);
+    if (el) {
+      el.classList.add('is-selected');
+      el.setAttribute('aria-current', 'true');
+    }
+  }
+}
+
+function announceSelection(id) {
+  const el = document.getElementById('sr-status');
+  if (!el) return;
+  if (!id) { el.textContent = 'Topic deselected'; return; }
+  const card = cards.find((c) => c.id === id);
+  el.textContent = card ? `Selected topic: ${truncate(stripMarkdown(card.content), 60)}` : 'Topic selected';
+}
+
 function onBoardChanged() {
   // Title input retains focus; just keep data in sync.
   const input = document.getElementById('board-title');
@@ -577,6 +649,14 @@ function onBoardChanged() {
   // Keep the visually-hidden h1 in sync for screen-reader users.
   const h1 = document.querySelector('.topbar h1');
   if (h1) h1.textContent = board.title || 'Untitled meeting';
+  // Apply a remote selection change (local clicks already synced the DOM, so
+  // those realtime echoes are no-ops here).
+  const domSel = document.querySelector('.card.is-selected')?.dataset.cardId ?? null;
+  const boardSel = board.selected_card_id ?? null;
+  if (domSel !== boardSel) {
+    applySelectionToDom();
+    if (!boardSel || cards.some((c) => c.id === boardSel)) announceSelection(boardSel);
+  }
   // Timer UI reads board state each tick; nothing extra needed here.
 }
 
