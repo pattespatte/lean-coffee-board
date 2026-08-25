@@ -221,6 +221,23 @@ a:hover { text-decoration: underline; }
   border: 1px solid rgba(0,0,0,.08);
 }
 
+/* Inline rename: double-click (or focus + Enter) edits the name. */
+.identity-badge:hover .identity-badge__name,
+.identity-badge:focus-visible .identity-badge__name {
+  text-decoration: underline dotted;
+}
+.identity-badge__input {
+  font: inherit;
+  font-size: .8rem;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  padding: .05rem .5rem;
+  background: var(--bg-elev);
+  color: var(--ink);
+  width: 10rem;
+}
+.identity-badge__input:focus { outline: none; box-shadow: var(--focus-ring); }
+
 /* ── Top bar ──────────────────────────────────────────────────────── */
 .topbar {
   display: flex;

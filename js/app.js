@@ -7,7 +7,7 @@
 
 import { supabase } from './supabase.js';
 import { SLUG_ALPHABET, SLUG_LENGTH } from './config.js';
-import { getIdentity } from './identity.js';
+import { getIdentity, enableNameEditing } from './identity.js';
 import { mountBoard, unmountBoard, currentBoardSlug } from './board.js';
 
 // ── Slug generation ─────────────────────────────────────────────────────
@@ -60,9 +60,11 @@ function renderLanding() {
     <main class="landing">
       <header class="landing__header">
         <div class="landing__logo">☕ Lean Coffee Board</div>
-        <div class="identity-badge" id="identity-badge">
-          <span class="identity-badge__dot" style="background:${identity.color}"></span>
-          <span>${escapeHtml(identity.name)}</span>
+        <div class="identity-badge" id="identity-badge" tabindex="0" role="img"
+             title="Your identity (per browser) — double-click to rename"
+             aria-label="Your identity: ${escapeHtml(identity.name)} (double-click to rename)">
+          <span class="identity-badge__dot" aria-hidden="true" style="background:${identity.color}"></span>
+          <span class="identity-badge__name" aria-hidden="true">${escapeHtml(identity.name)}</span>
         </div>
       </header>
       <section class="landing__hero">
@@ -97,6 +99,7 @@ function renderLanding() {
     </footer>
   `;
   document.getElementById('new-board-btn').addEventListener('click', createBoard);
+  enableNameEditing(document.getElementById('identity-badge'));
 }
 
 function renderError(err) {

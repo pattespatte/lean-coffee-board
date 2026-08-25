@@ -2,7 +2,7 @@
 // Owns the cards array + board metadata for the currently mounted board.
 
 import { supabase, subscribeBoard } from './supabase.js';
-import { getIdentity } from './identity.js';
+import { getIdentity, enableNameEditing } from './identity.js';
 import { attachDragAndDrop } from './dnd.js';
 import { startTimerUI, stopTimerUI, setBoardRef } from './timer.js';
 import { toggleVote, getVotedCardIds, sortToDiscussByVotes, votesRemaining } from './voting.js';
@@ -267,9 +267,11 @@ function renderShell() {
         <span class="topbar__slug">#/${escapeHtml(board.slug)}</span>
       </div>
       <div class="topbar__right">
-        <span class="identity-badge" id="identity-badge" title="Your identity (per browser)" role="img" aria-label="Your identity: ${escapeAttr(identity.name)}">
+        <span class="identity-badge" id="identity-badge" tabindex="0" role="img"
+              title="Your identity (per browser) — double-click to rename"
+              aria-label="Your identity: ${escapeAttr(identity.name)} (double-click to rename)">
           <span class="identity-badge__dot" aria-hidden="true" style="background:${identity.color}"></span>
-          <span aria-hidden="true">${escapeHtml(identity.name)}</span>
+          <span class="identity-badge__name" aria-hidden="true">${escapeHtml(identity.name)}</span>
         </span>
         <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> JSON</button>
         <button id="export-print-btn" class="btn btn--ghost" aria-label="Print or save as PDF"><span aria-hidden="true">🖨</span> Print</button>
@@ -288,11 +290,12 @@ function renderShell() {
     <div id="sr-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
   `;
 
+  enableNameEditing(document.getElementById('identity-badge'));
+
   document.getElementById('board-title').addEventListener('input', (e) => {
     clearTimeout(titleInputTimer);
     const value = e.target.value;
-    titleInputTimer = setTimeout(async () => {
-      const { error } = await supabase.from('boards').update({ title: value }).eq('id', board.id);
+    titleInputTimer = setTimeout(async () => {      const { error } = await supabase.from('boards').update({ title: value }).eq('id', board.id);
       if (error) flashError(error.message);
     }, 400);
   });
