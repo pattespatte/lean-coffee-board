@@ -274,6 +274,7 @@ function renderShell() {
           <span class="identity-badge__dot" aria-hidden="true" style="background:${identity.color}"></span>
           <span class="identity-badge__name" aria-hidden="true">${escapeHtml(identity.name)}</span>
         </span>
+        <button id="import-json-btn" class="btn btn--ghost" aria-label="Import topics from a JSON export"><span aria-hidden="true">⬆</span> Import</button>
         <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> JSON</button>
         <button id="export-print-btn" class="btn btn--ghost" aria-label="Print or save as PDF"><span aria-hidden="true">🖨</span> Print</button>
       </div>
@@ -303,6 +304,7 @@ function renderShell() {
 
   document.getElementById('export-json-btn').addEventListener('click', () => exportJson(board, cards));
   document.getElementById('export-print-btn').addEventListener('click', () => printBoard(board, cards));
+  document.getElementById('import-json-btn').addEventListener('click', pickImportFile);
 
   startTimerUI(board, document.getElementById('timer-bar'), (next) => { board = { ...board, ...next }; });
 }
@@ -486,6 +488,84 @@ function wireSortButton() {
     insertSorted();
     renderBoard();
   }));
+}
+
+// ── JSON import ───────────────────────────────────────────────────────
+// Round-trips the exportJson() payload: reads a previously exported file and
+// appends its cards to the current board. Existing cards are never touched,
+// so importing is always additive (delete cards to undo).
+function pickImportFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.hidden = true;   // in the DOM so Firefox opens the chooser on click()
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    if (file) await importJsonFile(file);
+    input.remove();   // fresh input each time allows re-importing the same file
+  });
+  document.body.appendChild(input);
+  input.click();
+}
+
+async function importJsonFile(file) {
+  let payload;
+  try {
+    payload = JSON.parse(await file.text());
+  } catch {
+    flashError('That file is not valid JSON.');
+    return;
+  }
+  const list = Array.isArray(payload) ? payload : payload?.cards;
+  if (!Array.isArray(list)) {
+    flashError('No topics found in that file (expected a "cards" array).');
+    return;
+  }
+
+  // Map to insertable rows. Entries without a column default to To Discuss
+  // (hand-written lists); entries with an *invalid* column are skipped.
+  const columnKeys = COLUMNS.map((c) => c.key);
+  const perColumn = Object.create(null);   // column_key → rows handed out so far
+  const rows = [];
+  let skipped = 0;
+  for (const entry of list) {
+    const content = typeof entry?.content === 'string' ? entry.content.trim() : '';
+    let col = null;
+    if (entry?.column_key == null) col = 'to_discuss';
+    else if (columnKeys.includes(entry.column_key)) col = entry.column_key;
+    if (!content || !col) { skipped++; continue; }
+
+    perColumn[col] = (perColumn[col] || 0) + 1;
+    const row = {
+      board_id: board.id,
+      column_key: col,
+      content,
+      author_name: typeof entry.author_name === 'string' && entry.author_name.trim() ? entry.author_name : null,
+      author_color: typeof entry.author_color === 'string' && entry.author_color.trim() ? entry.author_color : null,
+      position: nextPosition(col) + (perColumn[col] - 1) * 1000,   // appended after existing cards
+      votes: Math.max(0, Math.trunc(Number(entry.votes) || 0)),
+    };
+    const createdAt = new Date(entry.created_at);
+    if (!Number.isNaN(createdAt.getTime())) row.created_at = createdAt.toISOString();   // keep original time when parseable
+    rows.push(row);
+  }
+
+  if (rows.length === 0) {
+    flashError('No valid topics found in that file.');
+    return;
+  }
+
+  const { data, error } = await supabase.from('cards').insert(rows).select();
+  if (error) { flashError(error.message); return; }
+
+  // Merge the persisted rows in; realtime INSERTs for the same ids are ignored.
+  cards.push(...data);
+  insertSorted();
+  renderBoard();
+
+  const message = rows.length === 1 ? 'Imported 1 topic' : `Imported ${rows.length} topics`;
+  const sr = document.getElementById('sr-status');
+  if (sr) sr.textContent = skipped > 0 ? `${message}, skipped ${skipped} invalid entr${skipped === 1 ? 'y' : 'ies'}` : message;
 }
 
 function onBoardChanged() {
