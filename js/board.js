@@ -397,7 +397,7 @@ function renderCardMoveControls(card) {
   const atTop = rank <= 1;
   const atBottom = rank >= total || total <= 1;
   const options = COLUMNS.map((c) =>
-    `<option value="${c.key}"${c.key === card.column_key ? ' selected' : ''}>${c.label}</option>`
+    `<option value="${c.key}" data-status="${c.key}"${c.key === card.column_key ? ' selected' : ''}>${c.label}</option>`
   ).join('');
   return `
     <div class="card__move">

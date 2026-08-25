@@ -84,10 +84,10 @@ function renderLanding() {
       <section class="landing__how" aria-labelledby="how-it-works">
         <h2 id="how-it-works" class="landing__how-title">How it works</h2>
         <ul class="landing__columns">
-          <li class="landing__col"><h3>To Discuss</h3><p>Everyone adds topics.</p></li>
-          <li class="landing__col"><h3>Discussing</h3><p>The current topic, time-boxed.</p></li>
-          <li class="landing__col"><h3>Discussed</h3><p>Topics we've covered.</p></li>
-          <li class="landing__col"><h3>Actions</h3><p>Decisions and next steps.</p></li>
+          <li class="landing__col landing__col--to-discuss"><h3>To Discuss</h3><p>Everyone adds topics.</p></li>
+          <li class="landing__col landing__col--discussing"><h3>Discussing</h3><p>The current topic, time-boxed.</p></li>
+          <li class="landing__col landing__col--discussed"><h3>Discussed</h3><p>Topics we've covered.</p></li>
+          <li class="landing__col landing__col--actions"><h3>Actions</h3><p>Decisions and next steps.</p></li>
         </ul>
       </section>
     </main>

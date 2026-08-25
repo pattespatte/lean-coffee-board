@@ -16,9 +16,16 @@
   --shadow-drag:   0 8px 24px rgba(43, 38, 32, .22);
   --radius:        10px;
   --radius-sm:     6px;
-  --col-w:         min(320px, 25vw);
   --font:          system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --focus-ring:    0 0 0 2px var(--bg), 0 0 0 4px var(--accent);  /* 2px accent outline with bg gap; AA 2.4.13 */
+
+  /* Status accent colors. Also used as small text (headings, move select), so
+     all four are AA-checked (≥4.5:1) on both --bg-elev (#fffdf8) and --bg (#f6f1ea):
+     to-discuss 5.8/5.3 · discussing 5.3/4.8 · discussed 5.3/4.8 · actions 6.2/5.6. */
+  --status-to-discuss: #6b6357;   /* warm gray – the queue */
+  --status-discussing: #9c5a14;   /* amber – the live topic */
+  --status-discussed:  #457545;   /* green – covered */
+  --status-actions:    #34657f;   /* blue – decisions & next steps */
 }
 
 * { box-sizing: border-box; }
@@ -168,14 +175,19 @@ a:hover { text-decoration: underline; }
 }
 .landing__col {
   /* Flat legend treatment — not button-like (no elevated surface, border, or shadow). */
+  --status: var(--accent);
   background: transparent;
   border: 0;
-  border-top: 2px solid var(--accent);   /* AA 1.4.11: 5.22:1 on bg, passes 3:1 non-text */
+  border-top: 2px solid var(--status);   /* AA 1.4.11: status accents ≥4.5:1 on bg, passes 3:1 non-text */
   border-radius: 0;
   padding: .75rem 0 0;
   text-align: left;
 }
-.landing__col h3 { margin: 0 0 .35rem; font-size: 1rem; }
+.landing__col h3 { margin: 0 0 .35rem; font-size: 1rem; color: var(--status); }
+.landing__col--to-discuss { --status: var(--status-to-discuss); }
+.landing__col--discussing { --status: var(--status-discussing); }
+.landing__col--discussed  { --status: var(--status-discussed); }
+.landing__col--actions    { --status: var(--status-actions); }
 .landing__col p { margin: 0; color: var(--ink-soft); font-size: .85rem; }
 .landing__how-title {
   font-size: .8rem;
@@ -316,23 +328,32 @@ a:hover { text-decoration: underline; }
 .timer.is-paused .timer__progress > span { background: var(--ink-faint); }
 
 /* ── Board layout ─────────────────────────────────────────────────── */
+/* Columns reflow (4 → 2 → 1, see Responsive below) instead of scrolling
+   sideways, so every column stays visible at any window width. minmax(0,1fr)
+   lets columns shrink below their content's min width instead of overflowing. */
 .board {
   display: grid;
-  grid-template-columns: repeat(4, var(--col-w));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   padding: 1.25rem;
   align-items: start;
-  justify-content: center;
-  overflow-x: auto;
+  width: 100%;
+  max-width: 86rem;      /* ≈4×320px columns + gaps + padding; centered on wider screens */
+  margin-inline: auto;
 }
 .column {
+  --status: var(--status-to-discuss);   /* per-column accent: header, top bar, move select */
   background: var(--bg-elev);   /* opaque so cards sit on a solid surface over the artwork */
   border: 1px solid var(--line);
+  border-top: 3px solid var(--status);   /* AA 1.4.11: accents ≥4.5:1 on the column surface */
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   min-height: 12rem;
 }
+.column[data-column="discussing"] { --status: var(--status-discussing); }
+.column[data-column="discussed"]  { --status: var(--status-discussed); }
+.column[data-column="actions"]    { --status: var(--status-actions); }
 .column__head {
   display: flex;
   align-items: center;
@@ -346,7 +367,7 @@ a:hover { text-decoration: underline; }
   font-size: .85rem;
   text-transform: uppercase;
   letter-spacing: .06em;
-  color: var(--ink-soft);
+  color: var(--status);
 }
 .column__count {
   font-size: .7rem;
@@ -459,14 +480,21 @@ a:hover { text-decoration: underline; }
   flex: 1;
   font: inherit;
   font-size: .75rem;
+  font-weight: 600;
   padding: .2rem .3rem;
-  border: 1px solid #a87f44;   /* AA 1.4.11: 3.23:1 on bg, passes non-text 3:1 (stronger than --line) */
+  border: 1px solid var(--status);   /* status accent: closed select reads as a status chip (≥4.5:1, AA 1.4.11) */
   border-radius: var(--radius-sm);
   background: var(--bg);
-  color: var(--ink);
+  color: var(--status);              /* inherits --status from the column the card sits in */
   min-width: 0;
 }
 .card__move-select:focus { outline: none; box-shadow: var(--focus-ring); }
+/* Color each option with its status where the platform allows it. Many native
+   menus (e.g. macOS) ignore option colors; the label still identifies it. */
+.card__move-select option[data-status="to_discuss"] { color: var(--status-to-discuss); }
+.card__move-select option[data-status="discussing"] { color: var(--status-discussing); }
+.card__move-select option[data-status="discussed"]  { color: var(--status-discussed); }
+.card__move-select option[data-status="actions"]    { color: var(--status-actions); }
 .card__move .btn--icon { font-size: .8rem; padding: .2rem .35rem; }
 .card__move .btn--icon:disabled { opacity: .45; cursor: not-allowed; }
 
@@ -512,11 +540,13 @@ a:hover { text-decoration: underline; }
 }
 
 /* ── Responsive ───────────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  :root { --col-w: min(85vw, 360px); }
+/* 4 → 2 → 1 columns: reflow instead of horizontal scroll. */
+@media (max-width: 960px) {
+  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar__slug { display: none; }
 }
 @media (max-width: 560px) {
+  .board { grid-template-columns: minmax(0, 1fr); }
   .topbar { padding: .6rem .75rem; }
   .board { padding: .75rem; }
   .topbar__right .btn--ghost { padding: .35rem .5rem; }
