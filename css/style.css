@@ -166,7 +166,7 @@ a:hover { text-decoration: underline; }
 }
 .landing__columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
   margin-top: 2rem;
   list-style: none;
