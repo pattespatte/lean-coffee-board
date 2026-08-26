@@ -405,16 +405,19 @@ a:hover { text-decoration: underline; }
   flex: 1;
   font: inherit;
   font-size: .85rem;
-  resize: none;
+  resize: vertical;
   border: 2px solid var(--line);
   border-radius: var(--radius-sm);
   padding: .4rem .5rem;
   background: var(--bg-elev);
   color: var(--ink);
   min-height: 2rem;
-  max-height: 6rem;
+  transition: min-height .15s ease;
 }
-.column__add textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+.column__add textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: var(--focus-ring);
+  min-height: 5.5rem;
+}
 
 /* ── Cards ────────────────────────────────────────────────────────── */
 .card {

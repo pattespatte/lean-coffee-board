@@ -439,6 +439,17 @@ function wireAddForms() {
     const textarea = form.querySelector('textarea');
     if (textarea) {
       textarea.addEventListener('input', () => autoGrow(textarea));
+      textarea.addEventListener('focus', () => {
+        // Expand on entry; drop any hand-set resize height so CSS min-height applies.
+        textarea.style.height = '';
+        autoGrow(textarea);
+      });
+      textarea.addEventListener('blur', () => {
+        // Collapse back to one row once the user leaves an empty field.
+        if (!textarea.value.trim()) {
+          textarea.style.height = '';
+        }
+      });
       textarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
