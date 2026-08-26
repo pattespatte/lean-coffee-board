@@ -106,9 +106,48 @@ lean-coffee-board/
 │   ├── markdown.js             # Safe Markdown subset for topic text
 │   └── export.js               # JSON + print export
 ├── supabase/schema.sql         # Tables, RLS, realtime (run once)
+├── supabase/maintenance.sql    # last_activity, constraints, board_overview view (run once)
+├── scripts/
+│   └── maintenance.mjs         # Content-blind monitoring & cleanup CLI
 ├── .nojekyll                   # Disable Jekyll processing on Pages
 └── examples/                   # Sample board screenshot + demo HTML source
 ```
+
+---
+
+## Maintenance
+
+Boards live in Supabase until deleted, and under the open-RLS model every board that exists is world-readable – so old meetings are worth cleaning up. The tooling is metadata-only by design: it shows each board's title, timestamps and card/vote counts, never card text or author names.
+
+**One-time setup:** run [`supabase/maintenance.sql`](supabase/maintenance.sql) in the Supabase SQL Editor (after `schema.sql`; re-runnable). It adds a trigger-maintained `boards.last_activity_at` column, integrity check constraints, and a `board_overview` view.
+
+**Monitoring:** query the view whenever, e.g. in the SQL Editor:
+
+```sql
+select * from board_overview order by last_activity_at desc;
+```
+
+or from the terminal (`list` fetches the same view – never card content):
+
+```bash
+bun scripts/maintenance.mjs list               # or: node scripts/maintenance.mjs list
+bun scripts/maintenance.mjs list --json
+```
+
+**Cleanup:** prune is dry-run by default; `--apply` is required to delete anything. Deletion removes whole boards – cards cascade with them.
+
+```bash
+bun scripts/maintenance.mjs prune --older-than 90d            # dry run: shows what would go
+bun scripts/maintenance.mjs prune --older-than 90d --apply    # actually deletes
+```
+
+- `--older-than <age>` – boards with no writes for this long (e.g. `48h`, `90d`, `2w`; minimum 1h).
+- `--empty-age <age>` – never-used boards (zero cards) are deleted after this age instead; default `1d`, `0` disables.
+- `--archive DIR` – (with `--apply`) saves each board first as JSON in the app's own export format, so it can be re-imported later. This is the one feature that reads card content, which is why it is opt-in.
+
+**What counts as activity:** any write to a board or its cards – timer runs, title edits, added topics, votes, card moves. Reads never count (the keep-alive workflow does not keep boards alive).
+
+The script takes its Supabase URL and anon key from `SUPABASE_URL`/`SUPABASE_ANON_KEY` env vars, falling back to [`js/config.js`](js/config.js). If a check constraint fails to apply during the one-time setup, some existing row violates it – the error names the constraint; fix the data or relax the rule and re-run the migration.
 
 ---
 
