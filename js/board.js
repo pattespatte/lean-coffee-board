@@ -269,10 +269,10 @@ function renderShell() {
       </div>
       <div class="topbar__right">
         <span class="identity-badge" id="identity-badge" tabindex="0" role="img"
-              title="Your identity (per browser) — double-click to rename"
-              aria-label="Your identity: ${escapeAttr(identity.name)} (double-click to rename)">
+              aria-label="You are ${escapeAttr(identity.name)} (double-click to rename)">
           <span class="identity-badge__dot" aria-hidden="true" style="background:${identity.color}"></span>
           <span class="identity-badge__name" aria-hidden="true">${escapeHtml(identity.name)}</span>
+          <span class="identity-badge__hint" aria-hidden="true">You are ${escapeHtml(identity.name)} (double-click to rename)</span>
         </span>
         <button id="import-json-btn" class="btn btn--ghost" aria-label="Import topics from a JSON export"><span aria-hidden="true">⬆</span> Import</button>
         <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> JSON</button>
@@ -292,7 +292,10 @@ function renderShell() {
     <div id="sr-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
   `;
 
-  enableNameEditing(document.getElementById('identity-badge'));
+  const identityBadge = document.getElementById('identity-badge');
+  enableNameEditing(identityBadge);
+  identityBadge.addEventListener('identity-renamed', updateVoteRemainingIndicator);
+  maybeFlashBadgeHint(identityBadge);
 
   document.getElementById('board-title').addEventListener('input', (e) => {
     clearTimeout(titleInputTimer);
@@ -705,13 +708,32 @@ function autoGrow(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 
+// One-time, per browser: flash the badge hint shortly after the board loads,
+// so the double-click rename affordance is discovered without hovering
+// (hover doesn't exist on touch devices).
+const BADGE_HINT_SEEN_KEY = 'lcb:badge-hint-seen';
+
+function maybeFlashBadgeHint(badge) {
+  if (!badge) return;
+  try {
+    if (localStorage.getItem(BADGE_HINT_SEEN_KEY)) return;
+    localStorage.setItem(BADGE_HINT_SEEN_KEY, '1');
+  } catch { return; }   // storage unavailable: skip rather than flash on every visit
+  setTimeout(() => {
+    badge.classList.add('is-hinting');
+    setTimeout(() => badge.classList.remove('is-hinting'), 2600);
+  }, 600);
+}
+
 function updateVoteRemainingIndicator() {
-  // Subtle: reflect votes remaining in the identity badge tooltip.
+  // Reflect votes remaining in the badge hint popover and accessible name.
   const badge = document.getElementById('identity-badge');
-  if (badge) {
-    const remaining = 3 - votesRemaining(currentSlug);
-    badge.title = `You are ${getIdentity().name} · ${remaining} vote${remaining === 1 ? '' : 's'} left`;
-  }
+  if (!badge) return;
+  const remaining = votesRemaining(currentSlug);
+  const text = `You are ${getIdentity().name} (double-click to rename) · ${remaining} vote${remaining === 1 ? '' : 's'} left`;
+  badge.setAttribute('aria-label', text);
+  const hint = badge.querySelector('.identity-badge__hint');
+  if (hint) hint.textContent = text;
 }
 
 // ── Utilities ───────────────────────────────────────────────────────────

@@ -100,12 +100,17 @@ function beginEdit(badge) {
       saveIdentity({ ...identity, name: next });
       announce(`Name changed to ${next}`);
     }
+    const name = getIdentity().name;
     badge.classList.remove('is-editing');
     badge.setAttribute('role', 'img');
-    badge.setAttribute('aria-label', `Your identity: ${getIdentity().name}`);
+    badge.setAttribute('aria-label', `You are ${name} (double-click to rename)`);
+    const hint = badge.querySelector('.identity-badge__hint');
+    if (hint) hint.textContent = `You are ${name} (double-click to rename)`;
     input.replaceWith(span);
-    span.textContent = getIdentity().name;
+    span.textContent = name;
     badge.focus();
+    // Board view listens and rewrites the texts with the votes suffix.
+    badge.dispatchEvent(new CustomEvent('identity-renamed'));
   };
 
   input.addEventListener('keydown', (e) => {

@@ -61,10 +61,10 @@ function renderLanding() {
       <header class="landing__header">
         <div class="landing__logo">☕ Lean Coffee Board</div>
         <div class="identity-badge" id="identity-badge" tabindex="0" role="img"
-             title="Your identity (per browser) — double-click to rename"
-             aria-label="Your identity: ${escapeHtml(identity.name)} (double-click to rename)">
+             aria-label="You are ${escapeHtml(identity.name)} (double-click to rename)">
           <span class="identity-badge__dot" aria-hidden="true" style="background:${identity.color}"></span>
           <span class="identity-badge__name" aria-hidden="true">${escapeHtml(identity.name)}</span>
+          <span class="identity-badge__hint" aria-hidden="true">You are ${escapeHtml(identity.name)} (double-click to rename)</span>
         </div>
       </header>
       <section class="landing__hero">
