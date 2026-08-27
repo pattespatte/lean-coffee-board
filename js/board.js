@@ -274,8 +274,8 @@ function renderShell() {
           <span class="identity-badge__name" aria-hidden="true">${escapeHtml(identity.name)}</span>
           <span class="identity-badge__hint" aria-hidden="true">You are ${escapeHtml(identity.name)} (double-click to rename)</span>
         </span>
-        <button id="import-json-btn" class="btn btn--ghost" aria-label="Import topics from a JSON export"><span aria-hidden="true">⬆</span> Import</button>
-        <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> JSON</button>
+        <button id="import-json-btn" class="btn btn--ghost" aria-label="Import topics from a JSON export"><span aria-hidden="true">⬆</span> Import (JSON)</button>
+        <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> Export (JSON)</button>
         <button id="export-print-btn" class="btn btn--ghost" aria-label="Print or save as PDF"><span aria-hidden="true">🖨</span> Print</button>
       </div>
     </header>
