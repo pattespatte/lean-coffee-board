@@ -42,6 +42,7 @@ function render() {
   const remaining = computeRemainingSec(rafBoard);
 
   const running = !!rafBoard.timer_running;
+  const archived = !!rafBoard.archived;
   const low = remaining !== null && remaining <= 30 && remaining > 0;
 
   const pct = remaining === null
@@ -51,9 +52,11 @@ function render() {
   const mmss = remaining === null ? formatTime(duration) : formatTime(Math.max(0, remaining));
 
   // Only the time text + progress bar + low-time class change each tick.
-  // The buttons/select markup depends solely on `running` and `duration`,
-  // so we rebuild innerHTML only when one of those actually changes.
-  const signature = `${running}|${duration}`;
+  // The buttons/select markup depends solely on `running`, `duration` and
+  // `archived`, so we rebuild innerHTML only when one of those changes.
+  const signature = `${running}|${duration}|${archived}`;
+  // Archived boards show their controls disabled – read-only, like the rest.
+  const dis = archived ? ' disabled' : '';
   if (signature !== lastSignature) {
     container.innerHTML = `
       <section class="timer ${running ? '' : 'is-paused'}" aria-label="Discussion timer">
@@ -62,12 +65,12 @@ function render() {
         <div class="timer__progress" role="progressbar" aria-valuemin="0" aria-valuemax="${duration}" aria-valuenow="${remaining === null ? duration : Math.max(0, Math.round(remaining))}" aria-label="Time remaining"><span data-timer-bar style="width:${pct}%"></span></div>
         <div class="timer__buttons">
           ${running
-            ? `<button class="btn btn--ghost btn--sm" data-timer="pause" aria-label="Pause timer"><span aria-hidden="true">⏸</span> Pause</button>`
-            : `<button class="btn btn--primary btn--sm" data-timer="start" aria-label="Start timer"><span aria-hidden="true">▶</span> Start</button>`}
-          <button class="btn btn--ghost btn--sm" data-timer="reset" aria-label="Reset timer"><span aria-hidden="true">↺</span> Reset</button>
+            ? `<button class="btn btn--ghost btn--sm" data-timer="pause" aria-label="Pause timer"${dis}><span aria-hidden="true">⏸</span> Pause</button>`
+            : `<button class="btn btn--primary btn--sm" data-timer="start" aria-label="Start timer"${dis}><span aria-hidden="true">▶</span> Start</button>`}
+          <button class="btn btn--ghost btn--sm" data-timer="reset" aria-label="Reset timer"${dis}><span aria-hidden="true">↺</span> Reset</button>
           <label class="timer__duration" for="timer-duration-select">
             Discussion length
-            <select id="timer-duration-select" data-timer-duration aria-label="Discussion length">
+            <select id="timer-duration-select" data-timer-duration aria-label="Discussion length"${dis}>
               ${[120, 180, 300, 480, 600, 900].map((s) =>
                 `<option value="${s}" ${s === duration ? 'selected' : ''}>${formatTime(s)}</option>`
               ).join('')}
@@ -128,8 +131,10 @@ function computeRemainingSec(b) {
 }
 
 // ── Mutations (write to boards row; realtime fans out) ──────────────
+// No-ops on archived boards: the database rejects timer writes there
+// anyway (trg_boards_archive_guard); this keeps the UI from trying.
 async function startTimer() {
-  if (!rafBoard) return;
+  if (!rafBoard || rafBoard.archived) return;
   // Resume: keep prior elapsed; set fresh started_at.
   const elapsed = rafBoard.timer_paused_elapsed_sec || 0;
   const patch = {
@@ -142,7 +147,7 @@ async function startTimer() {
 }
 
 async function pauseTimer() {
-  if (!rafBoard) return;
+  if (!rafBoard || rafBoard.archived) return;
   const elapsed = computeElapsedAtNow(rafBoard);
   const patch = {
     timer_running: false,
@@ -154,7 +159,7 @@ async function pauseTimer() {
 }
 
 async function resetTimer() {
-  if (!rafBoard) return;
+  if (!rafBoard || rafBoard.archived) return;
   const patch = {
     timer_running: false,
     timer_started_at: null,
@@ -165,13 +170,15 @@ async function resetTimer() {
 }
 
 async function setDuration(seconds) {
-  if (!rafBoard) return;
+  if (!rafBoard || rafBoard.archived) return;
   const patch = { timer_duration_sec: seconds };
   applyLocal(patch);
   await persist(patch);
 }
 
-function computeElapsedAtNow(b) {
+// Seconds elapsed at "now" for a board row (paused or running). Shared with
+// board.js, which freezes the timer when archiving.
+export function computeElapsedAtNow(b) {
   const prior = b.timer_paused_elapsed_sec || 0;
   if (!b.timer_running || !b.timer_started_at) return prior;
   return prior + (Date.now() - Date.parse(b.timer_started_at)) / 1000;

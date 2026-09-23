@@ -132,7 +132,12 @@ end $$;
 -- Exposes slug, title, timestamps and counts – never card content or author
 -- names. (The tables themselves are already publicly readable under the
 -- open-RLS model, so this view adds no new exposure.)
-create or replace view public.board_overview as
+-- Drop + create rather than CREATE OR REPLACE: OR REPLACE can only append
+-- columns, so a changed column list (supabase/archive.sql re-creates this
+-- view with archive columns added) would fail with 42P16. Nothing depends
+-- on the view; grants are re-issued below.
+drop view if exists public.board_overview;
+create view public.board_overview as
 select b.slug,
        b.title,
        b.created_at,

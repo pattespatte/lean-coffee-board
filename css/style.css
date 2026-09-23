@@ -110,6 +110,9 @@ a:hover { text-decoration: underline; }
   background: var(--accent);
   border-color: var(--accent);
 }
+/* Locked-out controls (archived meetings). pointer-events also stops hover
+   styles from firing on buttons that can't be used. */
+.btn:disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
 
 /* ── Landing ──────────────────────────────────────────────────────── */
 /* Solid paper sheet over the background photo so all landing text keeps AA contrast. */
@@ -333,6 +336,30 @@ a:hover { text-decoration: underline; }
   font-size: .75rem;
   color: var(--ink-faint);
   user-select: all;
+}
+
+/* ── Archive banner ───────────────────────────────────────────────── */
+/* Shown between the top bar and the timer while a meeting is archived
+   (populated by js/board.js; :empty keeps it out of the live board and
+   mirrors the #timer-bar trick below). Ink on this tint ≈ 10:1 (AA). */
+.archive-banner {
+  padding: .55rem 1.25rem;
+  background: rgba(200, 164, 122, .38);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: .9rem;
+  text-align: center;
+}
+.archive-banner:empty { display: none; }
+/* The README.md link: accent-on-tint measures right at the 4.5:1 AA edge, so
+   the link inherits the banner ink instead and the underline carries the
+   affordance. */
+.archive-banner a { color: inherit; text-decoration: underline; }
+.archive-banner code {
+  font-size: .85em;
+  background: rgba(43, 38, 32, .08);
+  padding: .1em .35em;
+  border-radius: 4px;
 }
 
 /* ── Timer bar ────────────────────────────────────────────────────── */

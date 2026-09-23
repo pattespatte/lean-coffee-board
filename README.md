@@ -18,6 +18,7 @@ Four-column Kanban: **To Discuss → Discussing → Discussed → Actions**. Dra
 - **Random identity** – each browser gets a friendly name + colour (e.g. "Curious Otter"), so cards are attributable without accounts.
 - **Markdown topics** – card text supports `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``, fenced code blocks, links like `[text](https://…)` and autolinks like `<https://…>`. Rendered by a small built-in formatter: input is HTML-escaped first and only `https:`/`mailto:` links are allowed, so card text can never inject HTML.
 - **Card selection** – click a topic to highlight it for everyone in real time, so the audience always sees which topic is on the table. Click again to deselect, or another topic to switch.
+- **Archive** – when the meeting is over, **Archive this meeting** locks the board: everyone sees a "This meeting has been archived" banner that links to `README.md` for restoring or permanently deleting via maintenance, and editing is disabled across the app and rejected by the database. The button becomes **Restore this meeting from the archive** – one click brings the board back, timer state included.
 - **Export & import** – download the board as JSON, print a clean summary (decisions and action items highlighted), and import topics from a previous export. Importing appends to the current board and never touches existing cards.
 - **No build step** – plain HTML/CSS/JS served as-is.
 
@@ -85,6 +86,7 @@ python3 -m http.server 8000
 6. When the timer ends, the group decides: continue (restart timer) or done (drag to **Discussed**). Capture decisions and next steps in the **Actions** column.
 7. Repeat until time runs out.
 8. Use **Print** to capture a summary, or **JSON** to export the raw board.
+9. When the meeting is over, click **Archive this meeting** – the board becomes read-only for everyone (a banner says so) and can be restored later, or deleted via the maintenance script.
 
 ---
 
@@ -105,8 +107,9 @@ lean-coffee-board/
 │   ├── identity.js             # Random name/colour, per browser
 │   ├── markdown.js             # Safe Markdown subset for topic text
 │   └── export.js               # JSON + print export
-├── supabase/schema.sql         # Tables, RLS, realtime (run once)
+├── supabase/schema.sql         # Tables, RLS (incl. archive lock), realtime (run once)
 ├── supabase/maintenance.sql    # last_activity, constraints, board_overview view (run once)
+├── supabase/archive.sql        # Archiving: columns, lock policies, view update (run once)
 ├── scripts/
 │   └── maintenance.mjs         # Content-blind monitoring & cleanup CLI
 ├── .nojekyll                   # Disable Jekyll processing on Pages
@@ -119,7 +122,7 @@ lean-coffee-board/
 
 Boards live in Supabase until deleted, and under the open-RLS model every board that exists is world-readable – so old meetings are worth cleaning up. The tooling is metadata-only by design: it shows each board's title, timestamps and card/vote counts, never card text or author names.
 
-**One-time setup:** run [`supabase/maintenance.sql`](supabase/maintenance.sql) in the Supabase SQL Editor (after `schema.sql`; re-runnable). It adds a trigger-maintained `boards.last_activity_at` column, integrity check constraints, and a `board_overview` view.
+**One-time setup:** run [`supabase/maintenance.sql`](supabase/maintenance.sql) and [`supabase/archive.sql`](supabase/archive.sql) in the Supabase SQL Editor (after `schema.sql`; all re-runnable). `maintenance.sql` adds a trigger-maintained `boards.last_activity_at` column, integrity check constraints, and a `board_overview` view; `archive.sql` adds board archiving – the `boards.archived` column, policies that lock card writes on archived boards, and a trigger that makes archived board rows immutable except for restoring them. Projects set up before archiving existed need `archive.sql` before the archive commands (and the in-app button) work.
 
 **Monitoring:** query the view whenever, e.g. in the SQL Editor:
 
@@ -147,6 +150,19 @@ bun scripts/maintenance.mjs prune --older-than 90d --apply    # actually deletes
 
 **What counts as activity:** any write to a board or its cards – timer runs, title edits, added topics, votes, card moves. Reads never count (the keep-alive workflow does not keep boards alive).
 
+**Archiving, restoring and deleting a single meeting** – also dry-run by default, `--apply` required to change anything:
+
+```bash
+bun scripts/maintenance.mjs archive a1b2c3d4             # dry run: shows what would be archived
+bun scripts/maintenance.mjs archive a1b2c3d4 --apply     # actually archives
+bun scripts/maintenance.mjs unarchive a1b2c3d4           # dry run: shows what would be restored
+bun scripts/maintenance.mjs unarchive a1b2c3d4 --apply   # actually restores
+bun scripts/maintenance.mjs delete a1b2c3d4              # dry run: shows what would be deleted
+bun scripts/maintenance.mjs delete a1b2c3d4 --apply      # actually deletes
+```
+
+`archive` makes the board read-only for everyone and stops a running timer (its elapsed time is kept, so restoring resumes where the meeting left off). `delete` permanently removes one board – cards cascade with it – and accepts `--archive DIR` (with `--apply`) to save a JSON backup first, exactly like `prune`. Archived boards are never touched by `prune`; they stay until deleted explicitly.
+
 The script takes its Supabase URL and anon key from `SUPABASE_URL`/`SUPABASE_ANON_KEY` env vars, falling back to [`js/config.js`](js/config.js). If a check constraint fails to apply during the one-time setup, some existing row violates it – the error names the constraint; fix the data or relax the rule and re-run the migration.
 
 ---
@@ -157,7 +173,7 @@ This is a **no-account** tool, matching the philosophy of the original Agile Cof
 
 - **The board URL is the only secret.** Anyone with the link can read and edit the board. The 8-character slug gives ~4 billion combinations – enough that unguessable URLs won't be found by chance, but treat board links as sensitive as the meeting itself.
 - **Votes are best-effort.** The 3-vote limit is enforced per-browser via `localStorage`, not globally. A determined user could clear storage to vote again. True enforcement requires accounts, which this project deliberately avoids.
-- **RLS is fully open** (public read/write on both tables). This is necessary for the no-account model but means any Supabase client pointing at your project URL can read/write any board. The slug is the access control.
+- **RLS is open for live boards** (public read/write on both tables – necessary for the no-account model). This means any Supabase client pointing at your project URL can read/write any live board; the slug is the access control. **Archived boards are locked in the database itself:** card writes require an un-archived parent board, and an archived boards row rejects every update except the restore. Restoring is open to anyone with the URL – restoring is consistent with the capability model.
 
 If you need stronger access control, fork the project and add Supabase Auth.
 

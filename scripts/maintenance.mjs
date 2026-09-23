@@ -11,6 +11,9 @@
 //   maintenance.mjs list [--json]
 //   maintenance.mjs prune --older-than <age> [--empty-age <age>]
 //                         [--archive DIR] [--apply]
+//   maintenance.mjs archive <slug> [--apply]
+//   maintenance.mjs unarchive <slug> [--apply]
+//   maintenance.mjs delete <slug> [--archive DIR] [--apply]
 //   maintenance.mjs help
 //
 // Configuration: SUPABASE_URL / SUPABASE_ANON_KEY env vars, falling back to
@@ -31,30 +34,40 @@ function die(msg) {
 }
 
 function usage() {
-  console.log(`Lean Coffee Board maintenance – monitor and clean up boards in Supabase.
+  console.log(`Lean Coffee Board maintenance – monitor, archive and clean up boards in Supabase.
 
 Usage:
-  maintenance.mjs list  [--json]
-  maintenance.mjs prune --older-than <age> [--empty-age <age>] [--archive DIR] [--apply]
+  maintenance.mjs list      [--json]
+  maintenance.mjs prune     --older-than <age> [--empty-age <age>] [--archive DIR] [--apply]
+  maintenance.mjs archive   <slug> [--apply]
+  maintenance.mjs unarchive <slug> [--apply]
+  maintenance.mjs delete    <slug> [--archive DIR] [--apply]
   maintenance.mjs help
 
 Commands:
-  list    Show all boards: slug, title, activity, card and vote counts.
-  prune   Delete stale boards (dry run unless --apply).
-  help    Show this text.
+  list        Show all boards: slug, title, activity, card and vote counts.
+  prune       Delete stale boards (dry run unless --apply). Skips archived boards.
+  archive     Lock one board: read-only for everyone, running timer stopped
+              (dry run unless --apply).
+  unarchive   Restore one archived board to editable (dry run unless --apply).
+  delete      Permanently remove one board – cards cascade with it
+              (dry run unless --apply).
+  help        Show this text.
 
 Options:
   --older-than <age>  Activity cutoff for prune: e.g. 48h, 90d, 2w (1h minimum).
   --empty-age <age>   Delete never-used (0-card) boards after this age instead.
                       Default 1d; 0 disables.
-  --archive DIR       With --apply: save each deleted board as JSON in the app's
-                      own export format first (re-importable later). Reads card
-                      content, so it is opt-in; DIR is created if needed.
-  --apply             Actually delete. Without it prune only reports.
+  --archive DIR       With --apply: save the deleted board(s) as JSON in the
+                      app's own export format first (re-importable later).
+                      Reads card content, so it is opt-in; DIR is created if
+                      needed.
+  --apply             Actually change anything. Without it commands only report.
   --json              list: print raw JSON instead of a table.
 
 Ages use h/d/w units; a bare number means days. Prune deletes whole boards –
-cards cascade with them.`);
+cards cascade with them. Archived boards are never pruned; use
+"delete <slug>" to remove one explicitly.`);
 }
 
 // ── Config: env vars, falling back to js/config.js ───────────────────────
@@ -102,6 +115,46 @@ async function fetchOverview(cfg) {
   return res.json();
 }
 
+// Single-board commands: the boards row (metadata incl. timer state) and the
+// board_overview row (card/vote counts). Both die with a readable message
+// when the slug doesn't exist.
+async function fetchBoard(cfg, slug) {
+  const [row] = await (await api(cfg,
+    'boards?select=*&slug=' + encodeURIComponent(`eq.${slug}`))).json();
+  if (!row) die(`No board found for slug "${slug}" – run "maintenance.mjs list" to see slugs.`);
+  return row;
+}
+
+async function fetchOverviewRow(cfg, slug) {
+  const [row] = await (await api(cfg,
+    'board_overview?select=*&slug=' + encodeURIComponent(`eq.${slug}`))).json();
+  if (!row) die(`No board found for slug "${slug}" – run "maintenance.mjs list" to see slugs.`);
+  return row;
+}
+
+// Boards row from a project where supabase/archive.sql hasn't been applied.
+function requireArchiveSupport(row) {
+  if (row.archived === undefined) {
+    die('boards.archived is missing – apply supabase/archive.sql in the Supabase '
+      + 'SQL Editor first (PostgREST may need a few seconds to reload its schema cache).');
+  }
+}
+
+// Mirror of the app's timer math (js/timer.js): seconds elapsed at "now".
+function elapsedSecAtNow(b) {
+  const prior = b.timer_paused_elapsed_sec || 0;
+  if (!b.timer_running || !b.timer_started_at) return prior;
+  return Math.round(prior + (Date.now() - Date.parse(b.timer_started_at)) / 1000);
+}
+
+async function patchBoard(cfg, slug, patch) {
+  await api(cfg, 'boards?slug=' + encodeURIComponent(`eq.${slug}`), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+}
+
 // ── Time helpers ─────────────────────────────────────────────────────────
 function parseDuration(text, flag) {
   const m = /^(\d+)\s*(h|d|w)?$/.exec(String(text ?? ''));
@@ -125,10 +178,11 @@ function truncate(s, n) {
 }
 
 function renderTable(rows) {
-  const head = ['slug', 'title', 'created', 'last activity', 'cards', 'votes'];
+  const head = ['slug', 'title', 'arch', 'created', 'last activity', 'cards', 'votes'];
   const data = rows.map((r) => [
     r.slug,
     truncate(r.title || '–', 32),
+    r.archived ? 'yes' : '–',
     ago(r.created_at),
     ago(r.last_activity_at),
     String(r.cards_total),
@@ -172,7 +226,18 @@ async function archiveBoard(cfg, slug, dir) {
 }
 
 // ── Commands ─────────────────────────────────────────────────────────────
-async function cmdList(flags) {
+function noPositional(command, positional) {
+  if (positional.length > 0) die(`"${command}" takes no arguments.`);
+}
+
+function requireSlug(command, positional) {
+  const slug = positional[0];
+  if (!slug) die(`${command} requires a board slug, e.g. maintenance.mjs ${command} a1b2c3d4`);
+  return slug;
+}
+
+async function cmdList(flags, positional) {
+  noPositional('list', positional);
   const cfg = loadConfig();
   const rows = await fetchOverview(cfg);
   if (flags.json) {
@@ -187,7 +252,8 @@ async function cmdList(flags) {
   console.log(`\n${rows.length} board(s). Metadata only – card content is never fetched.`);
 }
 
-async function cmdPrune(flags) {
+async function cmdPrune(flags, positional) {
+  noPositional('prune', positional);
   if (!flags['older-than']) die('prune requires --older-than (e.g. 90d, 2w, 48h).');
   if (flags.archive !== undefined && !flags.apply) {
     die('--archive only makes sense together with --apply.');
@@ -203,13 +269,19 @@ async function cmdPrune(flags) {
   const cfg = loadConfig();
   const rows = await fetchOverview(cfg);
   const now = Date.now();
-  const stale = rows.filter((r) => {
+  // Archived boards are kept on purpose; remove them explicitly via delete.
+  const candidates = rows.filter((r) => !r.archived);
+  const archivedSkipped = rows.length - candidates.length;
+  const stale = candidates.filter((r) => {
     if (now - new Date(r.last_activity_at).getTime() >= olderMs) return true;
     return emptyMs > 0
       && r.cards_total === 0
       && now - new Date(r.created_at).getTime() >= emptyMs;
   });
 
+  if (archivedSkipped > 0) {
+    console.log(`${archivedSkipped} archived board(s) skipped – kept until "delete <slug>" removes them explicitly.`);
+  }
   if (stale.length === 0) {
     console.log('Nothing to delete – no boards match.');
     return;
@@ -237,10 +309,95 @@ async function cmdPrune(flags) {
   console.log(`\nDeleted ${deleted.length} board(s).`);
 }
 
+async function cmdArchive(flags, positional) {
+  const slug = requireSlug('archive', positional);
+  const cfg = loadConfig();
+  const board = await fetchBoard(cfg, slug);
+  requireArchiveSupport(board);
+  const overview = await fetchOverviewRow(cfg, slug);
+
+  renderTable([overview]);
+  if (board.archived) {
+    console.log(`\n${slug} is already archived – nothing to do.`);
+    return;
+  }
+
+  // Archiving stops a running timer but keeps its elapsed time, so a later
+  // restore resumes where the meeting left off (same as the in-app button).
+  const patch = {
+    archived: true,
+    archived_at: new Date().toISOString(),
+    timer_running: false,
+    timer_started_at: null,
+  };
+  if (board.timer_running) patch.timer_paused_elapsed_sec = elapsedSecAtNow(board);
+
+  if (!flags.apply) {
+    console.log(`\n${slug} would be archived (dry run – no changes made).`);
+    console.log('The board becomes read-only for everyone; restore it with "unarchive".');
+    if (board.timer_running) console.log('The running timer is stopped; its elapsed time is kept.');
+    console.log('Re-run with --apply to archive.');
+    return;
+  }
+
+  await patchBoard(cfg, slug, patch);
+  console.log(`\nArchived ${slug} – read-only now. Restore it with "unarchive ${slug}".`);
+}
+
+async function cmdUnarchive(flags, positional) {
+  const slug = requireSlug('unarchive', positional);
+  const cfg = loadConfig();
+  const board = await fetchBoard(cfg, slug);
+  requireArchiveSupport(board);
+  const overview = await fetchOverviewRow(cfg, slug);
+
+  renderTable([overview]);
+  if (!board.archived) {
+    console.log(`\n${slug} is not archived – nothing to do.`);
+    return;
+  }
+
+  if (!flags.apply) {
+    console.log(`\n${slug} would be restored from the archive (dry run – no changes made).`);
+    console.log('Re-run with --apply to unarchive.');
+    return;
+  }
+
+  await patchBoard(cfg, slug, { archived: false, archived_at: null });
+  console.log(`\nRestored ${slug} from the archive – it can be edited again.`);
+}
+
+async function cmdDelete(flags, positional) {
+  const slug = requireSlug('delete', positional);
+  if (flags.archive !== undefined && !flags.apply) {
+    die('--archive only makes sense together with --apply.');
+  }
+  const cfg = loadConfig();
+  const overview = await fetchOverviewRow(cfg, slug);
+
+  renderTable([overview]);
+  if (!flags.apply) {
+    console.log(`\n${slug} would be permanently deleted (dry run – no changes made).`);
+    console.log('Cards are deleted with the board. This cannot be undone.');
+    console.log('Re-run with --apply to delete.');
+    return;
+  }
+
+  if (flags.archive !== undefined) {
+    const dir = resolve(REPO_ROOT, flags.archive);
+    mkdirSync(dir, { recursive: true });
+    console.log(`Saved backup → ${await archiveBoard(cfg, slug, dir)}`);
+  }
+
+  await api(cfg, 'boards?slug=' + encodeURIComponent(`eq.${slug}`), { method: 'DELETE' });
+  console.log(`\nDeleted ${slug}.`);
+}
+
 // ── Arg parsing + dispatch ───────────────────────────────────────────────
 function parseArgs(argv) {
   const [command = 'help', ...rest] = argv;
   const flags = {};
+  const positional = [];
   const errors = [];
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -250,20 +407,25 @@ function parseArgs(argv) {
       const v = rest[++i];
       if (v === undefined) errors.push(`${a} needs a value`);
       else flags[a.slice(2)] = v;
-    } else {
+    } else if (a.startsWith('--')) {
       errors.push(`unknown argument "${a}"`);
+    } else {
+      positional.push(a);
     }
   }
-  return { command, flags, errors };
+  return { command, flags, positional, errors };
 }
 
-const { command, flags, errors } = parseArgs(process.argv.slice(2));
+const { command, flags, positional, errors } = parseArgs(process.argv.slice(2));
 if (errors.length) die(errors.join('; '));
 
 switch (command) {
-  case 'list': await cmdList(flags); break;
-  case 'prune': await cmdPrune(flags); break;
-  case 'help': case '--help': case '-h': usage(); break;
+  case 'list': await cmdList(flags, positional); break;
+  case 'prune': await cmdPrune(flags, positional); break;
+  case 'archive': await cmdArchive(flags, positional); break;
+  case 'unarchive': await cmdUnarchive(flags, positional); break;
+  case 'delete': await cmdDelete(flags, positional); break;
+  case 'help': case '--help': case '-h': noPositional('help', positional); usage(); break;
   default:
     console.error(`Unknown command "${command}".`);
     usage();

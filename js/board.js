@@ -4,17 +4,19 @@
 import { supabase, subscribeBoard } from './supabase.js';
 import { getIdentity, enableNameEditing } from './identity.js';
 import { attachDragAndDrop } from './dnd.js';
-import { startTimerUI, stopTimerUI, setBoardRef } from './timer.js';
+import { startTimerUI, stopTimerUI, setBoardRef, computeElapsedAtNow } from './timer.js';
 import { toggleVote, getVotedCardIds, sortToDiscussByVotes, votesRemaining } from './voting.js';
 import { exportJson, printBoard } from './export.js';
 import { renderMarkdown, stripMarkdown } from './markdown.js';
 
 // ── Module state ────────────────────────────────────────────────────────
 let currentSlug = null;
-let board = null;             // { id, slug, title, timer_* }
+let board = null;             // { id, slug, title, timer_*, archived, archived_at }
 let cards = [];               // [{ id, board_id, column, content, author_name, author_color, position, votes }]
 let unsubscribe = null;
 let titleInputTimer = null;
+let archivedRendered = false; // archived state the rendered card DOM reflects
+let archivePending = false;   // one archive/restore write in flight
 let srInsertBuffer = [];      // pending card inserts awaiting SR announcement
 let srInsertTimer = null;     // throttle timer for SR announcements
 
@@ -24,6 +26,11 @@ const COLUMNS = [
   { key: 'discussed',   label: 'Discussed'  },
   { key: 'actions',     label: 'Actions'    },
 ];
+
+const ARCHIVE_ICON = '<span aria-hidden="true">🗄</span>';
+// The README link saves readers the hunt for "the source code"; forks should
+// retarget it along with the GitHub link in the site footer.
+const ARCHIVE_BANNER_HTML = `${ARCHIVE_ICON} This meeting has been archived. To restore or permanently delete, please learn about maintenance in <code><a href="https://github.com/pattespatte/lean-coffee-board#maintenance">README.md</a></code> from the source code.`;
 
 export function currentBoardSlug() { return currentSlug; }
 
@@ -57,6 +64,8 @@ export function unmountBoard() {
   currentSlug = null;
   board = null;
   cards = [];
+  archivedRendered = false;
+  document.body.classList.remove('is-archived');
 }
 
 // ── Realtime ────────────────────────────────────────────────────────────
@@ -150,11 +159,14 @@ function cardRankInColumn(cardId) {
 }
 
 // ── Mutations ───────────────────────────────────────────────────────────
+// All card/board edits are no-ops on archived boards; the database rejects
+// them too (see supabase/archive.sql), so this is defence in depth for the
+// cases the locked-down UI can't reach (in-flight drags, stale clients).
 export async function addCard(columnKey) {
   const input = document.querySelector(`[data-add-input="${columnKey}"]`);
   if (!input) return;
   const content = input.value.trim();
-  if (!content || !board) return;
+  if (!content || !board || board.archived) return;
   input.value = '';
 
   const identity = getIdentity();
@@ -194,6 +206,7 @@ export async function addCard(columnKey) {
 }
 
 export async function updateCardContent(id, content) {
+  if (board?.archived) return;
   const i = cards.findIndex((c) => c.id === id);
   if (i < 0) return;
   const prev = cards[i].content;
@@ -204,7 +217,7 @@ export async function updateCardContent(id, content) {
 }
 
 export async function moveCard(id, toColumn, toPosition) {
-  if (!board) return;
+  if (!board || board.archived) return;
   const i = cards.findIndex((c) => c.id === id);
   if (i < 0) return;
   const card = cards[i];
@@ -228,6 +241,7 @@ export async function moveCard(id, toColumn, toPosition) {
 }
 
 export async function deleteCard(id) {
+  if (board?.archived) return;
   const prevCards = cards.slice();
   cards = cards.filter((c) => c.id !== id);
   renderBoard();
@@ -236,6 +250,7 @@ export async function deleteCard(id) {
 }
 
 export async function setCardVotes(id, votes) {
+  if (board?.archived) return;
   const i = cards.findIndex((c) => c.id === id);
   if (i < 0) return;
   cards[i].votes = votes;
@@ -277,8 +292,10 @@ function renderShell() {
         <button id="import-json-btn" class="btn btn--ghost" aria-label="Import topics from a JSON export"><span aria-hidden="true">⬆</span> Import (JSON)</button>
         <button id="export-json-btn" class="btn btn--ghost" aria-label="Download board as JSON"><span aria-hidden="true">⬇</span> Export (JSON)</button>
         <button id="export-print-btn" class="btn btn--ghost" aria-label="Print or save as PDF"><span aria-hidden="true">🖨</span> Print</button>
+        <button id="archive-btn" class="btn btn--ghost">${ARCHIVE_ICON} Archive this meeting</button>
       </div>
     </header>
+    <div id="archive-banner" class="archive-banner" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="timer-bar"></div>
     <main id="board" class="board" aria-label="Board"></main>
     <footer class="site-footer">
@@ -298,6 +315,7 @@ function renderShell() {
   maybeFlashBadgeHint(identityBadge);
 
   document.getElementById('board-title').addEventListener('input', (e) => {
+    if (board?.archived) return;   // readOnly when archived; guard stays for safety
     clearTimeout(titleInputTimer);
     const value = e.target.value;
     titleInputTimer = setTimeout(async () => {      const { error } = await supabase.from('boards').update({ title: value }).eq('id', board.id);
@@ -308,6 +326,7 @@ function renderShell() {
   document.getElementById('export-json-btn').addEventListener('click', () => exportJson(board, cards));
   document.getElementById('export-print-btn').addEventListener('click', () => printBoard(board, cards));
   document.getElementById('import-json-btn').addEventListener('click', pickImportFile);
+  document.getElementById('archive-btn').addEventListener('click', toggleArchive);
 
   // Card selection: click a card (or focus it + Enter/Space) to highlight the
   // topic the room is looking at. Delegated on the persistent #board element.
@@ -316,31 +335,34 @@ function renderShell() {
   boardEl.addEventListener('keydown', onBoardKeydown);
 
   startTimerUI(board, document.getElementById('timer-bar'), (next) => { board = { ...board, ...next }; });
+  applyArchivedUI();
 }
 
 function renderBoard() {
   const root = document.getElementById('board');
   if (!root) return;
+  const archived = !!board?.archived;
 
   const html = COLUMNS.map((col) => {
     const colCards = cards.filter((c) => c.column_key === col.key);
-    const cardsHtml = colCards.map((card) => renderCard(card, col.key)).join('');
+    const cardsHtml = colCards.map((card) => renderCard(card, col.key, archived)).join('');
     return `
       <section class="column" data-column="${col.key}" aria-label="${col.label}">
         <header class="column__head">
           <h2>${col.label}</h2>
           <span class="column__count">${colCards.length}<span class="visually-hidden"> topic${colCards.length === 1 ? '' : 's'}</span></span>
-          ${col.key === 'to_discuss' ? `<button class="btn btn--ghost btn--sm" data-sort-votes aria-label="Sort To Discuss by votes">Sort by votes</button>` : ''}
+          ${col.key === 'to_discuss' && !archived ? `<button class="btn btn--ghost btn--sm" data-sort-votes aria-label="Sort To Discuss by votes">Sort by votes</button>` : ''}
         </header>
         <div class="column__cards" data-dropzone="${col.key}">
           ${cardsHtml}
         </div>
+        ${archived ? '' : `
         <form class="column__add" data-add-form="${col.key}">
           <label class="visually-hidden" for="add-input-${col.key}">Add a topic to ${col.label}</label>
           <textarea id="add-input-${col.key}" data-add-input="${col.key}" placeholder="(Markdown support)"
             rows="1"></textarea>
           <button type="submit" class="btn btn--primary btn--sm">Add topic</button>
-        </form>
+        </form>`}
       </section>
     `;
   }).join('');
@@ -353,11 +375,12 @@ function renderBoard() {
   wireSortButton();
   attachDragAndDrop(root, moveCard);
   updateVoteRemainingIndicator();
+  archivedRendered = archived;
 }
 
-function renderCard(card, columnKey) {
+function renderCard(card, columnKey, archived = false) {
   const voted = getVotedCardIds(currentSlug).has(card.id);
-  const showVote = columnKey === 'to_discuss';
+  const showVote = columnKey === 'to_discuss' && !archived;
   const pending = card._pending ? ' card--pending' : '';
   const selected = board?.selected_card_id === card.id ? ' is-selected' : '';
   const votes = card.votes || 0;
@@ -367,10 +390,11 @@ function renderCard(card, columnKey) {
     ? `Remove vote, ${votes} vote${votes === 1 ? '' : 's'}`
     : `Vote for this topic, ${votes} vote${votes === 1 ? '' : 's'}`;
   const thumbIcon = '<svg class="icon icon--thumb" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8.73984815c0-.47742254.17078432-.93909653.4814868-1.30158274l4.7909063-5.58939072c.4276196-.49888947 1.1399001-.64272811 1.7276069-.34887469.5737957.28689785.849314.95205792.6464466 1.56066017l-1.6464466 4.93933983h4.6035746c.1199832 0 .239723.01079693.3577708.03226018 1.0867527.1975914 1.8075604 1.238758 1.609969 2.32551072l-1.2727273 7c-.1729057.9509814-1.0011675 1.6422291-1.9677398 1.6422291h-7.3308473c-1.1045695 0-2-.8954305-2-2z"></path><path d="m4 18v-9"></path></svg>';
-  // Keyboard-move controls (SC 2.5.7): hidden on pending cards (not yet persisted).
-  const moveControls = card._pending ? '' : renderCardMoveControls(card);
+  // Keyboard-move controls (SC 2.5.7): hidden on pending cards (not yet persisted)
+  // and on archived boards (read-only).
+  const moveControls = card._pending || archived ? '' : renderCardMoveControls(card);
   return `
-    <article class="card${pending}${selected}" draggable="true"
+    <article class="card${pending}${selected}"${archived ? '' : ' draggable="true"'}
              tabindex="0"${selected ? ' aria-current="true"' : ''}
              data-card-id="${card.id}" data-column="${card.column_key}"
              data-position="${card.position}"
@@ -390,6 +414,7 @@ function renderCard(card, columnKey) {
             ${thumbIcon}
             <span class="card__votes" aria-hidden="true">${votes}</span>
           </button>` : `<span class="card__votes-static">${votes} ${thumbIcon}<span class="visually-hidden"> vote${votes === 1 ? '' : 's'}</span></span>`}
+        ${archived ? '' : `
         <div class="card__actions">
           <button class="btn btn--icon" data-edit="${card.id}" aria-label="Edit topic">
             <span aria-hidden="true">✎</span>
@@ -397,7 +422,7 @@ function renderCard(card, columnKey) {
           <button class="btn btn--icon" data-delete="${card.id}" aria-label="Delete topic">
             <span aria-hidden="true">🗑</span>
           </button>
-        </div>
+        </div>`}
       </div>
     </article>
   `;
@@ -517,6 +542,7 @@ function wireSortButton() {
 // appends its cards to the current board. Existing cards are never touched,
 // so importing is always additive (delete cards to undo).
 function pickImportFile() {
+  if (board?.archived) return;
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/json,.json';
@@ -615,7 +641,7 @@ function toggleSelection(id) {
 }
 
 async function setSelectedCard(id) {
-  if (!board) return;
+  if (!board || board.archived) return;
   const prev = board.selected_card_id ?? null;
   if (prev === id) return;
   board = { ...board, selected_card_id: id };
@@ -654,7 +680,83 @@ function announceSelection(id) {
   el.textContent = card ? `Selected topic: ${truncate(stripMarkdown(card.content), 60)}` : 'Topic selected';
 }
 
+// ── Archive / restore ─────────────────────────────────────────────────
+// Archiving locks the meeting for every participant (database-enforced);
+// realtime fans the state change out to all open clients.
+async function toggleArchive() {
+  if (!board || archivePending) return;
+  archivePending = true;
+
+  const wasArchived = !!board.archived;
+  const patch = wasArchived
+    ? { archived: false, archived_at: null }
+    : {
+        archived: true,
+        archived_at: new Date().toISOString(),
+        // A locked meeting has no running timer; freeze elapsed time so a
+        // restore + Start resumes where the discussion left off.
+        timer_running: false,
+        timer_started_at: null,
+        ...(board.timer_running ? { timer_paused_elapsed_sec: computeElapsedAtNow(board) } : {}),
+      };
+
+  const prev = board;
+  board = { ...board, ...patch };
+  setBoardRef(board);   // keep the timer module's ref in sync
+  syncArchivedState();
+  const { error } = await supabase.from('boards').update(patch).eq('id', board.id);
+  archivePending = false;
+  if (error) {
+    board = prev;
+    setBoardRef(board);
+    syncArchivedState();
+    flashError(error.message);
+  }
+}
+
+// Re-render + announce whenever the archived state differs from what the DOM
+// shows; keeps everything in sync cheaply when it doesn't (timer ticks, title
+// edits, selection changes all come through here too).
+function syncArchivedState() {
+  const archived = !!board?.archived;
+  applyArchivedUI();
+  if (archived === archivedRendered) return;
+  archivedRendered = archived;
+  renderBoard();
+  const el = document.getElementById('sr-status');
+  if (el) {
+    el.textContent = archived
+      ? 'This meeting has been archived. To restore or permanently delete, please learn about maintenance in README.md from the source code.'
+      : 'Meeting restored – editing unlocked';
+  }
+}
+
+// Sync banner, button and control states with board.archived. Idempotent;
+// safe to call on every boards realtime update.
+function applyArchivedUI() {
+  const archived = !!board?.archived;
+  document.body.classList.toggle('is-archived', archived);
+
+  const banner = document.getElementById('archive-banner');
+  if (banner) banner.innerHTML = archived ? ARCHIVE_BANNER_HTML : '';
+
+  const btn = document.getElementById('archive-btn');
+  if (btn) {
+    btn.innerHTML = archived
+      ? `${ARCHIVE_ICON} Restore this meeting from the archive`
+      : `${ARCHIVE_ICON} Archive this meeting`;
+  }
+
+  const title = document.getElementById('board-title');
+  if (title) title.readOnly = archived;
+
+  const importBtn = document.getElementById('import-json-btn');
+  if (importBtn) importBtn.disabled = archived;
+  // Export and Print stay available: reading a locked board is the point.
+}
+
 function onBoardChanged() {
+  syncArchivedState();
   // Title input retains focus; just keep data in sync.
   const input = document.getElementById('board-title');
   if (input && document.activeElement !== input) {
@@ -675,6 +777,7 @@ function onBoardChanged() {
 }
 
 function startEdit(id) {
+  if (board?.archived) return;
   const cardEl = document.querySelector(`[data-card-id="${id}"]`);
   if (!cardEl) return;
   const contentEl = cardEl.querySelector('[data-card-content]');
