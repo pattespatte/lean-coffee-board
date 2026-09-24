@@ -74,6 +74,8 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
+> **Note:** the app won't work if you open `index.html` directly in the browser (`file://…`). It's built from ES modules, which browsers refuse to load over the `file://` protocol – you'd get a blank page and CORS errors in the console. Serve the directory with any static file server (`python3 -m http.server`, `npx serve`, …) and open the `http://localhost` URL instead.
+
 ---
 
 ## Running a Lean Coffee meeting
