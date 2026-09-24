@@ -18,7 +18,7 @@ Four-column Kanban: **To Discuss → Discussing → Discussed → Actions**. Dra
 - **Random identity** – each browser gets a friendly name + colour (e.g. "Curious Otter"), so cards are attributable without accounts.
 - **Markdown topics** – card text supports `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``, fenced code blocks, links like `[text](https://…)` and autolinks like `<https://…>`. Rendered by a small built-in formatter: input is HTML-escaped first and only `https:`/`mailto:` links are allowed, so card text can never inject HTML.
 - **Card selection** – click a topic to highlight it for everyone in real time, so the audience always sees which topic is on the table. Click again to deselect, or another topic to switch.
-- **Archive** – when the meeting is over, **Archive this meeting** locks the board: everyone sees a "This meeting has been archived" banner that links to `README.md` for restoring or permanently deleting via maintenance, and editing is disabled across the app and rejected by the database. The button becomes **Restore this meeting from the archive** – one click brings the board back, timer state included.
+- **Archive** – when the meeting is over, **Archive this meeting** locks the board: editing is disabled across the app and rejected by the database, and everyone sees a banner with a one-click **Restore this meeting from the archive** button (timer state included). Permanently deleting a meeting stays a maintenance task – see [Maintenance](#maintenance).
 - **Export & import** – download the board as JSON, print a clean summary (decisions and action items highlighted), and import topics from a previous export. Importing appends to the current board and never touches existing cards.
 - **No build step** – plain HTML/CSS/JS served as-is.
 
@@ -86,7 +86,7 @@ python3 -m http.server 8000
 6. When the timer ends, the group decides: continue (restart timer) or done (drag to **Discussed**). Capture decisions and next steps in the **Actions** column.
 7. Repeat until time runs out.
 8. Use **Print** to capture a summary, or **JSON** to export the raw board.
-9. When the meeting is over, click **Archive this meeting** – the board becomes read-only for everyone (a banner says so) and can be restored later, or deleted via the maintenance script.
+9. When the meeting is over, click **Archive this meeting** – the board becomes read-only for everyone, with a banner offering a one-click restore (permanent deletion goes through the maintenance script).
 
 ---
 

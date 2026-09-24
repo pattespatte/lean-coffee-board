@@ -28,9 +28,10 @@ const COLUMNS = [
 ];
 
 const ARCHIVE_ICON = '<span aria-hidden="true">🗄</span>';
-// The README link saves readers the hunt for "the source code"; forks should
-// retarget it along with the GitHub link in the site footer.
-const ARCHIVE_BANNER_HTML = `${ARCHIVE_ICON} This meeting has been archived. To restore or permanently delete, please learn about maintenance in <code><a href="https://github.com/pattespatte/lean-coffee-board#maintenance">README.md</a></code> from the source code.`;
+// The restore button keeps unarchiving in the room; the README link saves
+// readers the hunt for "the source code" (forks should retarget it along
+// with the GitHub link in the site footer).
+const ARCHIVE_BANNER_HTML = `${ARCHIVE_ICON} <button type="button" data-restore>Restore this meeting from the archive</button>. To permanently delete meetings please learn about maintenance in <code><a href="https://github.com/pattespatte/lean-coffee-board#maintenance">README.md</a></code> from the source code.`;
 
 export function currentBoardSlug() { return currentSlug; }
 
@@ -327,6 +328,11 @@ function renderShell() {
   document.getElementById('export-print-btn').addEventListener('click', () => printBoard(board, cards));
   document.getElementById('import-json-btn').addEventListener('click', pickImportFile);
   document.getElementById('archive-btn').addEventListener('click', toggleArchive);
+  // The banner's restore button is re-created by every applyArchivedUI()
+  // innerHTML swap, so delegate the click from the persistent container.
+  document.getElementById('archive-banner').addEventListener('click', (e) => {
+    if (e.target.closest('button[data-restore]')) toggleArchive();
+  });
 
   // Card selection: click a card (or focus it + Enter/Space) to highlight the
   // topic the room is looking at. Delegated on the persistent #board element.
@@ -711,7 +717,14 @@ async function toggleArchive() {
     setBoardRef(board);
     syncArchivedState();
     flashError(error.message);
+    return;
   }
+  // The clicked control just disappeared (button hidden while archived,
+  // banner emptied on restore); anchor keyboard users on the inverse action.
+  (wasArchived
+    ? document.getElementById('archive-btn')
+    : document.querySelector('#archive-banner button[data-restore]')
+  )?.focus();
 }
 
 // Re-render + announce whenever the archived state differs from what the DOM
@@ -726,7 +739,7 @@ function syncArchivedState() {
   const el = document.getElementById('sr-status');
   if (el) {
     el.textContent = archived
-      ? 'This meeting has been archived. To restore or permanently delete, please learn about maintenance in README.md from the source code.'
+      ? 'Restore this meeting from the archive. To permanently delete meetings please learn about maintenance in README.md from the source code.'
       : 'Meeting restored – editing unlocked';
   }
 }
@@ -738,14 +751,15 @@ function applyArchivedUI() {
   document.body.classList.toggle('is-archived', archived);
 
   const banner = document.getElementById('archive-banner');
-  if (banner) banner.innerHTML = archived ? ARCHIVE_BANNER_HTML : '';
-
-  const btn = document.getElementById('archive-btn');
-  if (btn) {
-    btn.innerHTML = archived
-      ? `${ARCHIVE_ICON} Restore this meeting from the archive`
-      : `${ARCHIVE_ICON} Archive this meeting`;
+  // Rewrite only on state flips: the banner holds the restore button, so a
+  // redundant innerHTML swap (the realtime echo of our own write, title
+  // edits, …) would destroy the node and drop focus to <body>.
+  if (banner && banner.dataset.archived !== String(archived)) {
+    banner.dataset.archived = String(archived);
+    banner.innerHTML = archived ? ARCHIVE_BANNER_HTML : '';
   }
+  // No topbar button flip here: CSS hides #archive-btn via body.is-archived,
+  // and the banner carries the restore action instead.
 
   const title = document.getElementById('board-title');
   if (title) title.readOnly = archived;

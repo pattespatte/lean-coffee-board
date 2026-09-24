@@ -361,6 +361,21 @@ a:hover { text-decoration: underline; }
   padding: .1em .35em;
   border-radius: 4px;
 }
+/* Restore action, styled to match the README.md link beside it: ink, not
+   accent (accent on this tint sits right at the 4.5:1 AA edge). The global
+   :focus-visible rule supplies the focus outline. */
+.archive-banner button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* While archived, the topbar Archive button steps aside; the banner's
+   restore action replaces it. */
+body.is-archived #archive-btn { display: none; }
 
 /* ── Timer bar ────────────────────────────────────────────────────── */
 #timer-bar:empty { display: none; }
